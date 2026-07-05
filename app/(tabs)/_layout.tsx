@@ -47,6 +47,7 @@ export default function TabsLayout() {
         name="insights"
         options={{
           title: "Insights",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="stats-chart-outline" color={color} size={size} />
           ),
@@ -56,6 +57,7 @@ export default function TabsLayout() {
         name="academics"
         options={{
           title: "Academics",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="school-outline" color={color} size={size} />
           ),

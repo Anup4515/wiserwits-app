@@ -8,6 +8,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { colors } from "@/theme";
 import { AuthProvider, useAuth } from "@/auth/AuthContext";
+import { EnrollmentProvider } from "@/features/enrollment/EnrollmentContext";
 
 /**
  * Root layout (plan §7). Wires global providers and the AUTH GATE:
@@ -59,8 +60,10 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <StatusBar style="light" />
-            <RootNavigator />
+            <EnrollmentProvider>
+              <StatusBar style="light" />
+              <RootNavigator />
+            </EnrollmentProvider>
           </AuthProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

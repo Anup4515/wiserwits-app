@@ -1,0 +1,241 @@
+/**
+ * Response types for the `/api/student/*` read endpoints consumed in Phase 2.
+ * These mirror the exact JSON the backend returns (see the route handlers in
+ * `ww-student-dashboard`). Every endpoint wraps its payload in `{ data: ... }`;
+ * the types below describe the inner `data`.
+ *
+ * String-vs-number gotchas are preserved verbatim: fields the backend selects
+ * raw from numeric columns arrive as STRINGS; fields cast with `::float8` /
+ * run through `parseFloat` arrive as NUMBERS. Booleans arrive as 0 | 1.
+ */
+
+// ── Source ──────────────────────────────────────────────────────────────────
+export type Source = "enrolled" | "self";
+
+// ── Dashboard (/dashboard) ──────────────────────────────────────────────────
+export interface DashboardData {
+  student: {
+    id: number;
+    name: string;
+    email: string;
+    has_active_enrollment: boolean;
+    has_past_enrollment: boolean;
+    school_id: number | null;
+    school_name: string | null;
+    class_name: string | null;
+    section_name: string | null;
+    grade_level: number | null;
+  };
+  school: DashboardSchool | null;
+  self: DashboardSelf | null;
+  personal: DashboardPersonal;
+}
+
+export interface DashboardSchool {
+  attendance: { total: number; present: number; percentage: number };
+  attendance_trend: { month: string; percentage: number }[];
+  assignments: { total: number; pending: number };
+  upcoming_exams: {
+    id: number; name: string; start_date: string; end_date: string; subject_count: number;
+  }[];
+  today_timetable: {
+    period_number: number; start_time: string; end_time: string;
+    slot_type: string; label: string | null;
+    subject_name: string | null; teacher_name: string | null; room_number: string | null;
+  }[];
+  recent_marks: {
+    exam_name: string; subject_name: string;
+    obtained_marks: string; maximum_marks: string; percentage: string; grade: string | null;
+  }[];
+  holistic_avg: { parameter_name: string; average_pct: number; rated_count: number }[];
+}
+
+export interface DashboardSelf {
+  attendance: { total: number; present: number; percentage: number };
+  exams: { count: number };
+  recent_marks: {
+    exam_name: string; subject: string; obtained: string; maximum: string;
+    exam_date: string; grade: string | null;
+  }[];
+  timetable: { slot_count: number };
+  today_timetable: {
+    start_time: string; end_time: string; subject: string;
+    teacher_name: string | null; location: string | null;
+  }[];
+  holistic: { avg: number | null; rated_count: number; month: string | null };
+}
+
+export interface DashboardPersonal {
+  subscription: { plan_name: string; status: string; expires_at: string | null } | null;
+  latest_bmi: { height_cm: string; weight_kg: string; bmi: string; record_date: string } | null;
+  counts: {
+    report_cards: number; teacher_feedbacks: number; advice_requests: number;
+    certificates: number; doctor_consultations: number; workshops: number;
+  };
+  upcoming_workshops: {
+    id: number; title: string; start_date: string; description: string | null; join_link: string | null;
+  }[];
+  recent_consultations: {
+    id: number; scheduled_at: string; status: string | null; doctor_name: string | null;
+  }[];
+}
+
+// ── Insights (/insights — NEW in Phase 2) ───────────────────────────────────
+export interface InsightsData {
+  source: Source;
+  student_name: string;
+  overall: { percentage: number | null; grade: string | null; exams_counted: number };
+  attendance: {
+    percentage: number; present: number; total: number;
+    trend: { month: string; percentage: number }[];
+  };
+  holistic: {
+    month: string | null;
+    average_pct: number | null;
+    dimensions: { name: string; pct: number }[];
+  };
+  strengths: { subject: string; percentage: number }[];
+  focus: { subject: string; percentage: number }[];
+  insight_of_the_day: { title: string; body: string; tone: "positive" | "warning" | "neutral" };
+}
+
+// ── Attendance (/attendance, /self/attendance) ──────────────────────────────
+export interface AttendanceData {
+  records: {
+    id: number; date: string; status: string; remarks: string | null;
+    marked_by: string | null; created_at: string;
+  }[];
+  stats: {
+    total_days: number; present: number; absent: number;
+    late: number; half_day: number; attendance_percentage: number;
+  };
+}
+
+// ── Exams (/exams, /self/exams) ─────────────────────────────────────────────
+export interface ExamRow {
+  id: number;
+  name: string;
+  code: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  status: string;
+  subject_count: number;
+}
+
+// ── Marks (/marks?exam_id, /self/exam-marks?exam) ───────────────────────────
+export interface MarksData {
+  marks: {
+    id: number; subject_id: number; subject_name: string;
+    obtained_marks: number | null; maximum_marks: number;
+    is_absent: number; percentage: number | null; grade: string | null;
+  }[];
+  summary: {
+    total_obtained: number; total_max: number; percentage: number; grade: string | null;
+  };
+  schedule: {
+    subject_id: number; subject_name: string;
+    exam_date: string | null; exam_time: string | null;
+    duration_minutes: number | null; maximum_marks: number; room_number: string | null;
+  }[];
+}
+
+// ── Reports: enrolled list (/reports) ───────────────────────────────────────
+export interface ReportCardRow {
+  id: number;
+  type: string;
+  reference_month: string | null;
+  exam_id: number | null;
+  attendance_percentage: string | null;
+  overall_percentage: string | null;
+  overall_grade: string | null;
+  rank_in_class: number | null;
+  teacher_remarks: string | null;
+  pdf_url: string | null;
+  generated_at: string;
+}
+
+// ── Reports: self live summary (/self/report) ───────────────────────────────
+export interface SelfReportData {
+  overall: { obtained: number; maximum: number; percentage: number; grade: string } | null;
+  attendance: { total_days: number; present: number; percentage: number };
+  exams: {
+    exam_name: string; exam_date: string; obtained: number; maximum: number;
+    percentage: number; grade: string | null;
+    subjects: { subject: string; obtained: number; maximum: number; grade: string | null }[];
+  }[];
+  holistic: {
+    period_month: string;
+    dimensions: { dimension: string; rating: number }[];
+    average: number;
+  } | null;
+}
+
+// ── Timetable: enrolled (/timetable) ────────────────────────────────────────
+export interface TimetableData {
+  periods: {
+    period_number: number; start_time: string; end_time: string;
+    slot_type: string; label: string | null;
+  }[];
+  slots: {
+    day_of_week: number; // 1=Sun .. 7=Sat
+    period_number: number;
+    subject_name: string | null; teacher_name: string | null; room_number: string | null;
+  }[];
+}
+
+// ── Timetable: self (/self/timetable) — flat recurring slots ────────────────
+export type SelfTimetableRow = {
+  id: number;
+  day_of_week: number; // 0=Sun .. 6=Sat
+  start_time: string;
+  end_time: string;
+  subject: string;
+  teacher_name: string | null;
+  location: string | null;
+  filled_by_user_id: number | null;
+  filled_by_name: string | null;
+};
+
+// ── Calendar: enrolled (/calendar) ──────────────────────────────────────────
+export interface CalendarData {
+  days: {
+    date: string; day_of_week: string;
+    is_holiday: number; is_working_saturday: number; holiday_reason: string | null;
+  }[];
+  summary: { total_working_days: number; total_holidays: number };
+  workshops: CalendarWorkshop[];
+  liveClasses: CalendarLiveClass[];
+}
+
+// ── Calendar: self (/self/calendar) — no days grid ──────────────────────────
+export interface SelfCalendarData {
+  timetable: SelfTimetableRow[];
+  workshops: CalendarWorkshop[];
+  liveClasses: CalendarLiveClass[];
+}
+
+export interface CalendarWorkshop {
+  id: number; title: string; description: string | null;
+  join_link: string | null; start_date: string;
+}
+export interface CalendarLiveClass {
+  id: number; title: string; description: string | null;
+  start_time: string; start_date: string; duration_minutes: number | null;
+  join_link: string | null; status: string; recording_url: string | null;
+}
+
+// ── Holistic: enrolled (/holistic) ──────────────────────────────────────────
+export interface HolisticGroup {
+  parameter_name: string;
+  stage: string;
+  sub_parameters: {
+    name: string; rating_value: number | null; max_rating: number | null;
+    rating_grade: string | null; comments: string | null;
+  }[];
+}
+
+// ── Holistic: self (/self/holistic) — flat rows ─────────────────────────────
+export interface SelfHolisticRow {
+  id: number; period_month: string; dimension: string; rating: number;
+  reflection: string | null; filled_by_user_id: number | null; filled_by_name: string | null;
+}
