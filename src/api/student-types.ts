@@ -239,3 +239,80 @@ export interface SelfHolisticRow {
   id: number; period_month: string; dimension: string; rating: number;
   reflection: string | null; filled_by_user_id: number | null; filled_by_name: string | null;
 }
+
+// ── Activity feed (/feed — NEW in Phase 3) ──────────────────────────────────
+export type FeedCategory =
+  | "assignment" | "advice" | "feedback" | "consultation"
+  | "diet" | "lab" | "report" | "marks";
+
+export interface FeedItem {
+  id: string;             // stable across categories, e.g. "assignment:123"
+  category: FeedCategory;
+  title: string;
+  body: string | null;
+  ts: string;             // ISO — screen groups by calendar day
+  unread: boolean;
+}
+
+export interface FeedData {
+  items: FeedItem[];
+  nextCursor: string | null;
+  lastReadAt: string;
+}
+
+// ── Health & wellness (/health + sub-routes — Phase 3) ──────────────────────
+// height/weight/bmi arrive as NUMBERS (::float8 in /health).
+export interface BmiRecord {
+  id: number; height: number; weight: number; bmi: number;
+  record_date: string; created_at: string;
+}
+export interface HealthData {
+  bmi_records: BmiRecord[];
+  consultations_count: number;
+  diet_plans_count: number;
+  lab_reports_count: number;
+}
+export interface ConsultationRow {
+  id: number; patient_name: string; problem: string; symptoms: string | null;
+  scheduled_at: string; status: string; feedback: string | null; created_at: string;
+}
+export interface DietPlanRow {
+  id: number; title: string; description: string | null; shared_by_id: number | null;
+  share_date: string; valid_upto: string; file_path: string | null; created_at: string;
+}
+export interface LabReportRow {
+  id: number; title: string; report_data: string | null;
+  shared_by_id: number | null; created_at: string;
+}
+
+// ── Advice & feedback (/advice, /feedback — Phase 3) ─────────────────────────
+export interface AdviceRow {
+  id: number; message: string | null; preferred_time: string | null;
+  status: string; feedback: string | null; file_path: string | null; created_at: string;
+}
+export interface TeacherFeedbackRow {
+  id: number; subject: string | null; feedback: string | null;
+  file_path: string | null; teacher_name: string | null; created_at: string;
+}
+
+// ── Assignments (/assignments — Phase 3) ────────────────────────────────────
+// marks_obtained / total_marks arrive as STRINGS (raw numeric columns).
+export interface AssignmentRow {
+  id: number; title: string; description: string | null; deadline: string | null;
+  status: string; assignment_status: string | null; quiz_for: string | null;
+  assignment_link: string | null; marks_obtained: string | null;
+  total_marks: string | null; created_at: string;
+}
+
+// ── Contributors / access grants (/access-grants — Phase 3) ─────────────────
+export type GrantRelationship =
+  | "self" | "parent" | "class_teacher" | "tuition_teacher" | "mentor";
+
+// scope_* arrive as 0 | 1.
+export interface ContributorGrant {
+  id: number; invite_email: string; invite_name: string | null;
+  relationship: GrantRelationship; status: string;
+  scope_attendance: number; scope_marks: number; scope_timetable: number; scope_holistic: number;
+  contributor_name: string | null;
+  invited_at: string; accepted_at: string | null; expires_at: string | null;
+}

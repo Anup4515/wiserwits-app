@@ -1,7 +1,8 @@
-import { Tabs } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
+import { View, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "@/theme";
+import { colors, palette } from "@/theme";
 
 /**
  * 5-slot tab bar (plan §7). Phase 1 ships Home + Profile as functional and
@@ -14,6 +15,7 @@ import { colors } from "@/theme";
  */
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   return (
     <Tabs
@@ -53,6 +55,25 @@ export default function TabsLayout() {
           ),
         }}
       />
+      {/* Center (+) — intercepts the tab press to open the quick-actions
+          modal instead of navigating to a screen (plan §7 / Phase 3). */}
+      <Tabs.Screen
+        name="create"
+        options={{
+          title: "",
+          tabBarIcon: () => (
+            <View style={styles.plus}>
+              <Ionicons name="add" color={colors.textInverse} size={26} />
+            </View>
+          ),
+        }}
+        listeners={{
+          tabPress: (e) => {
+            e.preventDefault();
+            router.push("/quick-actions");
+          },
+        }}
+      />
       <Tabs.Screen
         name="academics"
         options={{
@@ -75,3 +96,20 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  plus: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    marginTop: -14,
+    backgroundColor: palette.primary600,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: palette.primary800,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+});

@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/auth/AuthContext";
 import { useDashboard } from "@/api/hooks";
+import { NotificationBell } from "@/components/NotificationBell";
 import { Card } from "@/components/ui";
 import { StatTile, SectionHeader, SourceBadge, EmptyState } from "@/components/data-ui";
 import { t } from "@/lib/copy";
@@ -44,17 +45,20 @@ export default function Home() {
                   : user?.plan_name ?? "Self-tracked"}
               </Text>
             </View>
-            <Pressable
-              onPress={() => router.push("/account-switcher")}
-              hitSlop={8}
-              style={styles.bell}
-            >
-              <Ionicons
-                name={accounts.length > 1 ? "people-outline" : "notifications-outline"}
-                size={20}
-                color={colors.textInverse}
-              />
-            </Pressable>
+            <View style={styles.heroActions}>
+              <NotificationBell />
+              <Pressable
+                onPress={() => router.push("/account-switcher")}
+                hitSlop={8}
+                style={styles.bell}
+              >
+                <Ionicons
+                  name={accounts.length > 1 ? "people-outline" : "person-add-outline"}
+                  size={20}
+                  color={colors.textInverse}
+                />
+              </Pressable>
+            </View>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -106,8 +110,12 @@ export default function Home() {
         <View>
           <SectionHeader title="Explore" />
           <View style={styles.quickGrid}>
+            <QuickLink icon="notifications-outline" label="Activity" onPress={() => router.push("/feed")} />
             <QuickLink icon="calendar-outline" label="Attendance" onPress={() => router.push("/(tabs)/academics/attendance")} />
             <QuickLink icon="reader-outline" label="Exams" onPress={() => router.push("/(tabs)/academics/exams")} />
+            <QuickLink icon="clipboard-outline" label="Assignments" onPress={() => router.push("/assignments")} />
+            <QuickLink icon="heart-outline" label="Health" onPress={() => router.push("/health")} />
+            <QuickLink icon="chatbubbles-outline" label="Advice" onPress={() => router.push("/advice")} />
             <QuickLink icon="document-text-outline" label="Report" onPress={() => router.push("/(tabs)/academics/report")} />
             <QuickLink icon="time-outline" label="Timetable" onPress={() => router.push("/(tabs)/academics/timetable")} />
             <QuickLink icon="today-outline" label="Calendar" onPress={() => router.push("/(tabs)/academics/calendar")} />
@@ -297,6 +305,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingTop: spacing.md, paddingBottom: spacing.xs, gap: spacing.md,
   },
+  heroActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   greet: { color: colors.textInverse, fontSize: 21, fontWeight: "800" },
   plan: { color: "#b9c0e0", fontSize: 12.5, fontWeight: "600", marginTop: 2 },
   bell: {

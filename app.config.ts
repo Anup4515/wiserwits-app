@@ -10,6 +10,21 @@ import type { ExpoConfig, ConfigContext } from "expo/config";
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
 
+// Fail the build early if a release profile still has a missing/placeholder or
+// non-HTTPS backend URL — a broken API base must never ship silently. EAS sets
+// EAS_BUILD_PROFILE during `eas build`.
+const profile = process.env.EAS_BUILD_PROFILE;
+if (profile === "production" || profile === "staging") {
+  const bad =
+    !/^https:\/\//.test(API_BASE_URL) || /\.example(?:[:/]|$)/.test(API_BASE_URL);
+  if (bad) {
+    throw new Error(
+      `[app.config] "${profile}" build needs a real HTTPS EXPO_PUBLIC_API_BASE_URL ` +
+        `(got "${API_BASE_URL}"). Set it in eas.json → build.${profile}.env.`
+    );
+  }
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "WiserWits",

@@ -9,17 +9,28 @@
  */
 import { FEATURE } from "@/lib/features";
 import { useSourceQuery, type SourceQueryResult } from "@/api/query";
+import { useApiMutation } from "@/api/mutations";
 import type {
+  AdviceRow,
+  AssignmentRow,
   AttendanceData,
   CalendarData,
+  ConsultationRow,
+  ContributorGrant,
   DashboardData,
+  DietPlanRow,
   ExamRow,
+  FeedData,
+  GrantRelationship,
+  HealthData,
   InsightsData,
+  LabReportRow,
   MarksData,
   ReportCardRow,
   SelfCalendarData,
   SelfReportData,
   SelfTimetableRow,
+  TeacherFeedbackRow,
   TimetableData,
 } from "@/api/student-types";
 
@@ -112,5 +123,164 @@ export function useCalendar(month: string): SourceQueryResult<CalendarData | Sel
       path: source === "enrolled" ? "/api/student/calendar" : "/api/student/self/calendar",
       params: { month },
     }),
+  });
+}
+
+// ── Phase 3: retention + write surfaces ─────────────────────────────────────
+// The feed and the legacy student_id-keyed resources (health, advice, feedback,
+// assignments, contributors) aren't source-split, so `build` ignores `source`
+// and hits one path — but useSourceQuery still folds the active account into the
+// cache key and gates on the plan feature.
+
+/** Activity feed — always-allowed; backend resolves enrolled/self internally. */
+export function useFeed(): SourceQueryResult<FeedData> {
+  return useSourceQuery<FeedData>({
+    key: "feed",
+    build: () => ({ path: "/api/student/feed" }),
+  });
+}
+
+/** Health overview — BMI history + consultation/diet/lab counts. */
+export function useHealth(): SourceQueryResult<HealthData> {
+  return useSourceQuery<HealthData>({
+    key: "health",
+    feature: FEATURE.health,
+    build: () => ({ path: "/api/student/health" }),
+  });
+}
+
+export function useConsultations(): SourceQueryResult<ConsultationRow[]> {
+  return useSourceQuery<ConsultationRow[]>({
+    key: "consultations",
+    feature: FEATURE.health,
+    build: () => ({ path: "/api/student/health/doctor-consultations" }),
+  });
+}
+
+export function useDietPlans(): SourceQueryResult<DietPlanRow[]> {
+  return useSourceQuery<DietPlanRow[]>({
+    key: "dietPlans",
+    feature: FEATURE.health,
+    build: () => ({ path: "/api/student/health/diet-plans" }),
+  });
+}
+
+export function useLabReports(): SourceQueryResult<LabReportRow[]> {
+  return useSourceQuery<LabReportRow[]>({
+    key: "labReports",
+    feature: FEATURE.health,
+    build: () => ({ path: "/api/student/health/lab-reports" }),
+  });
+}
+
+/** Advice requests to the assigned consultant (list + thread). */
+export function useAdvice(): SourceQueryResult<AdviceRow[]> {
+  return useSourceQuery<AdviceRow[]>({
+    key: "advice",
+    feature: FEATURE.advice,
+    build: () => ({ path: "/api/student/advice" }),
+  });
+}
+
+/** Teacher feedback (read-only). */
+export function useFeedback(): SourceQueryResult<TeacherFeedbackRow[]> {
+  return useSourceQuery<TeacherFeedbackRow[]>({
+    key: "feedback",
+    feature: FEATURE.feedback,
+    build: () => ({ path: "/api/student/feedback" }),
+  });
+}
+
+/** Assignments — list with status/marks. */
+export function useAssignments(): SourceQueryResult<AssignmentRow[]> {
+  return useSourceQuery<AssignmentRow[]>({
+    key: "assignments",
+    feature: FEATURE.assignments,
+    build: () => ({ path: "/api/student/assignments" }),
+  });
+}
+
+/** Contributors (access grants) — only meaningful for independent students. */
+export function useContributors(): SourceQueryResult<ContributorGrant[]> {
+  return useSourceQuery<ContributorGrant[]>({
+    key: "contributors",
+    build: () => ({ path: "/api/student/access-grants" }),
+  });
+}
+
+// ── Mutations (Phase 3 writes) ──────────────────────────────────────────────
+
+/** Mark an assignment submitted (id → POST /assignments/[id]/submit). */
+export function useSubmitAssignment() {
+  return useApiMutation<{ id: number; assignment_status: string }, number>({
+    path: (id) => `/api/student/assignments/${id}/submit`,
+    invalidate: [["assignments"], ["feed"]],
+  });
+}
+
+/** Log a BMI reading. */
+export function useLogBmi() {
+  return useApiMutation<{ id: number; bmi: number }, { height_cm: number; weight_kg: number }>({
+    path: "/api/student/bmi",
+    body: (v) => v,
+    invalidate: [["health"], ["dashboard"], ["feed"]],
+  });
+}
+
+/** Book a doctor consultation. */
+export function useBookConsultation() {
+  return useApiMutation<
+    { id: number },
+    { patient_name: string; problem: string; symptoms: string; scheduled_at: string }
+  >({
+    path: "/api/student/health/doctor-consultations",
+    body: (v) => v,
+    invalidate: [["consultations"], ["health"], ["feed"]],
+  });
+}
+
+/** Send an advice request to the assigned consultant. */
+export function useAskAdvice() {
+  return useApiMutation<{ id: number }, { message: string; preferred_time?: string | null }>({
+    path: "/api/student/advice",
+    body: (v) => v,
+    invalidate: [["advice"], ["feed"]],
+  });
+}
+
+/** Invite a contributor (access grant). */
+export function useInviteContributor() {
+  return useApiMutation<
+    ContributorGrant,
+    {
+      invite_email: string;
+      invite_name?: string | null;
+      relationship: GrantRelationship;
+      scope_attendance?: boolean;
+      scope_marks?: boolean;
+      scope_timetable?: boolean;
+      scope_holistic?: boolean;
+    }
+  >({
+    path: "/api/student/access-grants",
+    body: (v) => v,
+    invalidate: [["contributors"]],
+  });
+}
+
+/** Revoke a contributor grant (id → DELETE /access-grants/[id]). */
+export function useRevokeContributor() {
+  return useApiMutation<{ ok: boolean }, number>({
+    method: "delete",
+    path: (id) => `/api/student/access-grants/${id}`,
+    invalidate: [["contributors"]],
+  });
+}
+
+/** Mark the whole feed read (POST /feed). */
+export function useMarkFeedRead() {
+  return useApiMutation<{ ok: boolean }, void>({
+    path: "/api/student/feed",
+    invalidate: [["feed"]],
   });
 }

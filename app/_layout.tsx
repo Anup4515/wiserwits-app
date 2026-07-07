@@ -50,6 +50,33 @@ function RootNavigator() {
         name="add-account"
         options={{ presentation: "modal", title: "Add account" }}
       />
+
+      {/* Phase 3 — retention + write surfaces */}
+      <Stack.Screen name="feed" options={{ title: "Activity" }} />
+      <Stack.Screen name="health" options={{ title: "Health & Wellness" }} />
+      <Stack.Screen name="advice" options={{ title: "Advice & Feedback" }} />
+      <Stack.Screen name="assignments" options={{ title: "Assignments" }} />
+      <Stack.Screen name="contributors" options={{ title: "Contributors" }} />
+      <Stack.Screen
+        name="quick-actions"
+        options={{ presentation: "modal", title: "Quick actions" }}
+      />
+      <Stack.Screen
+        name="log-bmi"
+        options={{ presentation: "modal", title: "Log BMI" }}
+      />
+      <Stack.Screen
+        name="book-consultation"
+        options={{ presentation: "modal", title: "Book consultation" }}
+      />
+      <Stack.Screen
+        name="ask-advice"
+        options={{ presentation: "modal", title: "Ask a consultant" }}
+      />
+      <Stack.Screen
+        name="invite-contributor"
+        options={{ presentation: "modal", title: "Invite contributor" }}
+      />
     </Stack>
   );
 }

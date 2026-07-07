@@ -27,6 +27,41 @@ export default function Profile() {
         </View>
       </Card>
 
+      <Text style={styles.sectionH}>More</Text>
+      <Card style={styles.list}>
+        <Row
+          icon="notifications-outline"
+          title="Activity"
+          subtitle="Your recent updates"
+          onPress={() => router.push("/feed")}
+        />
+        <Row
+          icon="heart-outline"
+          title="Health & wellness"
+          subtitle="BMI, consultations, diet & lab reports"
+          onPress={() => router.push("/health")}
+        />
+        <Row
+          icon="chatbubbles-outline"
+          title="Advice & feedback"
+          subtitle="Ask a consultant, read teacher feedback"
+          onPress={() => router.push("/advice")}
+        />
+        <Row
+          icon="clipboard-outline"
+          title="Assignments"
+          subtitle="Tasks and submissions"
+          onPress={() => router.push("/assignments")}
+        />
+        <Row
+          icon="people-circle-outline"
+          title="Contributors"
+          subtitle={enrolled ? "Managed by your school" : "People who can fill your data"}
+          onPress={() => router.push("/contributors")}
+          last
+        />
+      </Card>
+
       <Text style={styles.sectionH}>Account</Text>
       <Card style={styles.list}>
         <Row
@@ -39,7 +74,7 @@ export default function Profile() {
       </Card>
 
       <Text style={styles.note}>
-        Contributors, subscription, settings and more arrive in later phases.
+        Subscription and settings arrive in a later phase.
       </Text>
     </ScrollView>
   );

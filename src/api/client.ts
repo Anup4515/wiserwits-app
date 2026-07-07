@@ -31,7 +31,10 @@ async function refreshActiveTokens(): Promise<TokenPair | null> {
     try {
       const res = await fetch(`${env.apiBaseUrl}/api/auth/mobile/refresh`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+        },
         body: JSON.stringify({ refreshToken: tokens.refreshToken }),
       });
       if (!res.ok) {
@@ -75,6 +78,9 @@ async function doFetch<T>(
 ): Promise<{ status: number; body: ApiResponse<T> } | { networkError: true }> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    // Skip ngrok's free-tier browser-warning interstitial so tunneled API
+    // responses stay JSON (harmless/ignored when not tunnelling through ngrok).
+    "ngrok-skip-browser-warning": "true",
     ...(opts.headers as Record<string, string> | undefined),
   };
   if (opts.auth !== false && accessToken) {
