@@ -30,6 +30,7 @@ import type {
   SelfCalendarData,
   SelfReportData,
   SelfTimetableRow,
+  SubscriptionData,
   TeacherFeedbackRow,
   TimetableData,
 } from "@/api/student-types";
@@ -205,6 +206,19 @@ export function useContributors(): SourceQueryResult<ContributorGrant[]> {
   return useSourceQuery<ContributorGrant[]>({
     key: "contributors",
     build: () => ({ path: "/api/student/access-grants" }),
+  });
+}
+
+/**
+ * Subscription state + plan catalog (Phase 4). Always-allowed and not
+ * source-split — one endpoint returns the current/scheduled subscription and
+ * the full plan catalog. The purchase flow (order → Razorpay → verify) lives in
+ * the screen; this hook is just the read side.
+ */
+export function useSubscription(): SourceQueryResult<SubscriptionData> {
+  return useSourceQuery<SubscriptionData>({
+    key: "subscription",
+    build: () => ({ path: "/api/student/subscription" }),
   });
 }
 

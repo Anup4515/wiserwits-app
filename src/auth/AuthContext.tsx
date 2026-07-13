@@ -16,8 +16,11 @@ import {
   getAccounts,
   getActiveSession,
   getActiveStudentId,
+  getSessionFor,
   removeSession,
   setActiveStudent,
+  updateTokens,
+  updateUser,
   type AccountRef,
 } from "@/auth/token-store";
 
@@ -46,6 +49,9 @@ interface AuthContextValue extends AuthState {
   removeAccount: (studentId: number) => Promise<void>;
   /** Sign out every account on this device. */
   signOutAll: () => Promise<void>;
+  /** Force-refresh the active account's tokens + claims (e.g. after a purchase
+   * unlocks new plan features). Returns true if the session was refreshed. */
+  refreshSession: () => Promise<boolean>;
   reload: () => Promise<void>;
 }
 
@@ -103,12 +109,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const removeAccount = useCallback(
     async (studentId: number) => {
-      const session = await getActiveSession();
-      // best-effort server revoke for the account being removed
-      const target =
-        (await getActiveStudentId()) === studentId
-          ? session
-          : null; // only have the refresh token handy for the active one
+      // Server-revoke the refresh token of the ACCOUNT BEING REMOVED — read its
+      // own stored session, not the active one, so removing a non-active sibling
+      // still kills its token server-side instead of leaving it valid until its
+      // 30-day expiry.
+      const target = await getSessionFor(studentId);
       if (target?.refreshToken) {
         void authApi.logout(target.refreshToken).catch(() => {});
       }
@@ -128,6 +133,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await reload();
   }, [reload]);
 
+  const refreshSession = useCallback(async (): Promise<boolean> => {
+    const id = await getActiveStudentId();
+    const session = await getActiveSession();
+    if (id == null || !session?.refreshToken) return false;
+    const res = await authApi.refresh(session.refreshToken);
+    if (res.error || !res.accessToken || !res.refreshToken || !res.user) {
+      return false;
+    }
+    await updateTokens(id, {
+      accessToken: res.accessToken,
+      refreshToken: res.refreshToken,
+    });
+    await updateUser(id, res.user);
+    await reload();
+    return true;
+  }, [reload]);
+
   const signOutAll = useCallback(async () => {
     const session = await getActiveSession();
     if (session?.refreshToken) {
@@ -145,9 +167,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       removeAccount,
       signOutAll,
+      refreshSession,
       reload,
     }),
-    [state, signIn, switchAccount, signOut, removeAccount, signOutAll, reload]
+    [state, signIn, switchAccount, signOut, removeAccount, signOutAll, refreshSession, reload]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

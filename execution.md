@@ -99,17 +99,41 @@
 8. `[A]` ✅ Plan-gating: `LockGate`/upsell from `features[]`; gated queries are disabled
    (never call a known-locked endpoint). Academics hub shows per-row lock hints.
 
-## Phase 3 — Retention + write surfaces (Backend + App)
-1. `[B]` `GET /api/student/feed` (Q7 → build per spec) — chronological, day-grouped,
-   paginated activity feed with read/unread (the daily-open hook). Define the event
-   model (new marks, attendance marked, report published, advice replied, …) +
-   unread storage; this event model also drives push (Phase 4, Q6).
-2. `[A]` Activity feed (mock 8) → new `/feed` (replaces badge-map assumption).
-3. `[A]` Health & Wellness (mock 6): BMI card/trend, consultations, diet, lab reports.
-4. `[A]` Advice & Feedback (mock 9) thread → `/advice` (GET/POST) + `/feedback`.
-5. `[A]` Assignments: list + submit (`POST /assignments/[id]/submit`).
-6. `[A]` (+) quick actions: log BMI, ask consultant, book consultation, submit assignment, invite contributor.
-7. `[A]` Profile & Contributors (mock 10): roster + invite/grant (`/access-grants`).
+## Phase 3 — Retention + write surfaces (Backend + App) — ✅ DONE
+> Backend + app both typecheck clean (`tsc --noEmit` = 0 on each). Most Phase 3
+> backend already existed (assignments/advice/feedback/health/access-grants); the
+> only net-new backend was the feed.
+>
+> ⚠️ **Design decision (Q7 feed):** built as a **DERIVED** feed, not a stored
+> event table. `app/lib/feed.ts` merges recent rows from the existing activity
+> tables at read time (same philosophy as `notifications.ts`), day-grouped in the
+> app; unread = a single per-student `student_feed_reads` watermark (migration
+> `002`, seeded to NOW() so a backlog never floods). A **stored per-event model —
+> needed to fan out OS push — is deferred to Phase 4** (Q6); this derived feed is
+> the read surface for now. Feed pagination (`?before=` cursor) exists in the API;
+> the app renders the first page + pull-to-refresh (infinite scroll TBD).
+>
+> App infra added: `useApiMutation` (the app's first write path), Phase-3 query +
+> mutation hooks, new types. Navigation: a center **"+" tab** opens a
+> `/quick-actions` modal; Feed/Health/Advice/Assignments/Contributors are
+> top-level routes reachable from Home's Explore grid and Profile.
+
+1. `[B]` ✅ `GET /api/student/feed` + `POST /feed` (mark read) — chronological,
+   day-grouped, paginated, read/unread. **Derived** (see note); migration `002`
+   `student_feed_reads`.
+2. `[A]` ✅ Activity feed (mock 8) → `app/feed.tsx`.
+3. `[A]` ✅ Health & Wellness (mock 6): BMI card/trend, consultations, diet, lab reports
+   → `app/health.tsx` (+ `log-bmi`, `book-consultation` modals).
+4. `[A]` ✅ Advice & Feedback (mock 9) thread → `app/advice.tsx` (GET/POST advice +
+   read-only feedback) + `ask-advice` modal.
+5. `[A]` ✅ Assignments: list + submit → `app/assignments.tsx` (`POST /assignments/[id]/submit`).
+6. `[A]` ✅ (+) quick actions → center "+" tab → `app/quick-actions.tsx`: log BMI, ask
+   consultant, book consultation, submit assignment, invite contributor.
+7. `[A]` ✅ Profile & Contributors (mock 10): roster + invite/grant/revoke
+   (`/access-grants`) → `app/contributors.tsx` (+ `invite-contributor` modal),
+   linked from Profile.
+   *(Deferred to Phase 4: OS push send pipeline / stored event model; feed
+   infinite-scroll; file-upload assignment submission.)*
 
 ## Phase 4 — Learning, settings, push & store (Backend + App)
 **Backend:**
@@ -126,8 +150,13 @@
 **App:**
 5. `[A]` Courses / Learning: catalog, enrol, à-la-carte purchase (`/courses`, `/order`,
    `/verify`) via **Razorpay native SDK** (Q4).
-6. `[A]` Subscription & Plans → `/subscription` + `/order` + `/verify` via **Razorpay
-   native SDK** (Q4 — no web deep-link).
+6. `[A]` ✅ Subscription & Plans → `app/subscription.tsx` (current + scheduled plan,
+   catalog cards) + `/order` + `/verify` via **Razorpay native SDK** (Q4 — no web
+   deep-link). `src/lib/razorpay.ts` lazy-loads the native module so Expo Go browses
+   plans without crashing (pay needs a dev build). `LockGate` "View plans" and Profile
+   now route here; on success `AuthContext.refreshSession()` re-resolves claims so
+   newly-granted features unlock. *(Backend `/subscription`, `/order`, `/verify`
+   already existed.)*
 7. `[A]` Certificates, Live classes, Workshops, Articles, Reminders, Feedback screens.
 8. `[A]` Search, Settings (notif prefs), Account & Security (change pw, devices), Help/Legal.
 9. `[A]` Push client (`expo-notifications`): permission prompt, register token →

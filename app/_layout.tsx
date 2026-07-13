@@ -57,6 +57,7 @@ function RootNavigator() {
       <Stack.Screen name="advice" options={{ title: "Advice & Feedback" }} />
       <Stack.Screen name="assignments" options={{ title: "Assignments" }} />
       <Stack.Screen name="contributors" options={{ title: "Contributors" }} />
+      <Stack.Screen name="subscription" options={{ title: "Plans & Subscription" }} />
       <Stack.Screen
         name="quick-actions"
         options={{ presentation: "modal", title: "Quick actions" }}

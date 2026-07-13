@@ -2,6 +2,15 @@ import { Stack } from "expo-router";
 import { colors } from "@/theme";
 
 /**
+ * Anchor the stack to the hub (`index`). Without this, navigating STRAIGHT to a
+ * sub-screen (e.g. Home's "Attendance" tile) makes that screen the only entry
+ * in the stack — so there's no back chevron to return to the Academics hub.
+ * With `index` as the anchor, the hub always sits beneath, so every sub-screen
+ * gets a working back button.
+ */
+export const unstable_settings = { initialRouteName: "index" };
+
+/**
  * Academics is a hub (plan §7): the tab shows a list of academic screens that
  * push onto this nested Stack. Headers are navy with white back chevrons.
  */

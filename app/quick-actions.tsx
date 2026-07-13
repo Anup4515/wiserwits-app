@@ -4,12 +4,20 @@ import { useRouter, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { colors, palette, spacing, radius, typography, shadow } from "@/theme";
+import { useAuth } from "@/auth/AuthContext";
+import { FEATURE, isFeatureLocked } from "@/lib/features";
 
 /**
  * The "+" quick-actions sheet. A single tap from the tab bar into any of the
  * student's write flows. Because this is itself a modal, we `router.replace`
  * into the target so the action sheet is swapped out for the flow rather than
  * stacking behind it.
+ *
+ * Plan-gated actions (advice/health/assignments) mirror the screen-level lock:
+ * for an enrolled student without the feature we show a lock and route to
+ * `/subscription` instead of into a flow the backend would just reject. Actions
+ * with no `feature` (Log BMI — always-allowed; Invite contributor — ungated)
+ * are always open.
  */
 interface Action {
   icon: keyof typeof Ionicons.glyphMap;
@@ -18,6 +26,8 @@ interface Action {
   label: string;
   subtitle: string;
   href: Href;
+  /** Plan feature this action needs; omit for always-allowed/ungated actions. */
+  feature?: string;
 }
 
 const ACTIONS: Action[] = [
@@ -36,6 +46,7 @@ const ACTIONS: Action[] = [
     label: "Ask a consultant",
     subtitle: "Send a question to your consultant",
     href: "/ask-advice",
+    feature: FEATURE.advice,
   },
   {
     icon: "medkit-outline",
@@ -44,6 +55,7 @@ const ACTIONS: Action[] = [
     label: "Book a consultation",
     subtitle: "Schedule a doctor consultation",
     href: "/book-consultation",
+    feature: FEATURE.health,
   },
   {
     icon: "clipboard-outline",
@@ -52,6 +64,7 @@ const ACTIONS: Action[] = [
     label: "Submit an assignment",
     subtitle: "Mark an assignment as done",
     href: "/assignments",
+    feature: FEATURE.assignments,
   },
   {
     icon: "people-outline",
@@ -66,6 +79,7 @@ const ACTIONS: Action[] = [
 export default function QuickActionsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
 
   return (
     <ScrollView
@@ -77,22 +91,34 @@ export default function QuickActionsScreen() {
 
       <View style={{ height: spacing.md }} />
 
-      {ACTIONS.map((a) => (
-        <Pressable
-          key={a.label}
-          onPress={() => router.replace(a.href)}
-          style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-        >
-          <View style={[styles.icon, { backgroundColor: a.tint }]}>
-            <Ionicons name={a.icon} size={22} color={a.fg} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowLabel}>{a.label}</Text>
-            <Text style={styles.rowSub}>{a.subtitle}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-        </Pressable>
-      ))}
+      {ACTIONS.map((a) => {
+        const locked = a.feature ? isFeatureLocked(user, a.feature) : false;
+        return (
+          <Pressable
+            key={a.label}
+            onPress={() => router.replace(locked ? "/subscription" : a.href)}
+            style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: false }}
+            accessibilityLabel={locked ? `${a.label} — locked, view plans` : a.label}
+          >
+            <View style={[styles.icon, { backgroundColor: a.tint }, locked && styles.iconLocked]}>
+              <Ionicons name={a.icon} size={22} color={locked ? colors.textMuted : a.fg} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.rowLabel, locked && styles.textLocked]}>{a.label}</Text>
+              <Text style={styles.rowSub}>
+                {locked ? "Part of a plan — tap to upgrade" : a.subtitle}
+              </Text>
+            </View>
+            <Ionicons
+              name={locked ? "lock-closed" : "chevron-forward"}
+              size={locked ? 18 : 20}
+              color={locked ? colors.gold : colors.textMuted}
+            />
+          </Pressable>
+        );
+      })}
     </ScrollView>
   );
 }
@@ -123,6 +149,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  iconLocked: { backgroundColor: colors.bg },
   rowLabel: { ...typography.h2, fontSize: 15, color: colors.ink },
+  textLocked: { color: colors.textMuted },
   rowSub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
 });

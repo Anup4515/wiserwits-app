@@ -28,6 +28,15 @@ export function login(email: string, password: string): Promise<Flat<LoginRespon
   });
 }
 
+/**
+ * Rotate tokens AND re-resolve plan state without re-login. The backend re-runs
+ * `buildSessionClaims`, so the returned `user` carries freshly granted plan
+ * features — used after a subscription purchase to unlock gated screens.
+ */
+export function refresh(refreshToken: string): Promise<Flat<LoginResponse>> {
+  return flatPost<LoginResponse>("/api/auth/mobile/refresh", { refreshToken });
+}
+
 export function logout(refreshToken: string, all = false): Promise<Flat<{ ok: boolean }>> {
   return flatPost<{ ok: boolean }>(
     `/api/auth/mobile/logout${all ? "?all=true" : ""}`,

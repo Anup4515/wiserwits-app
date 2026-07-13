@@ -91,7 +91,7 @@ export function LockGate({ feature }: { feature: string }) {
         active yet. Upgrade to see it here.
       </Text>
       <View style={{ height: spacing.md }} />
-      <Button label="View plans" onPress={() => router.push("/(tabs)/profile")} />
+      <Button label="View plans" onPress={() => router.push("/subscription")} />
     </View>
   );
 }

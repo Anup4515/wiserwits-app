@@ -8,7 +8,7 @@ import { colors, palette, spacing, radius, typography } from "@/theme";
 
 /**
  * Profile (mock 10) — account header + management (switch / add / sign out,
- * §5a). Contributors, subscription and settings land in later phases.
+ * §5a) plus entry points to Plans & subscription. Settings land in a later phase.
  */
 export default function Profile() {
   const { user, accounts, signOut } = useAuth();
@@ -65,6 +65,12 @@ export default function Profile() {
       <Text style={styles.sectionH}>Account</Text>
       <Card style={styles.list}>
         <Row
+          icon="card-outline"
+          title="Plans & subscription"
+          subtitle={user?.plan_name ? `Current: ${user.plan_name}` : "View and change your plan"}
+          onPress={() => router.push("/subscription")}
+        />
+        <Row
           icon="people-outline"
           title={accounts.length > 1 ? "Switch or manage accounts" : "Add another account"}
           subtitle={accounts.length > 1 ? `${accounts.length} accounts on this device` : "e.g. a sibling"}
@@ -74,7 +80,7 @@ export default function Profile() {
       </Card>
 
       <Text style={styles.note}>
-        Subscription and settings arrive in a later phase.
+        Settings arrive in a later phase.
       </Text>
     </ScrollView>
   );

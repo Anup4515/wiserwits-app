@@ -2,7 +2,7 @@ import { env } from "@/lib/env";
 import type { ApiResponse, TokenPair } from "@/api/types";
 import {
   getActiveStudentId,
-  getActiveTokens,
+  getSessionFor,
   updateTokens,
   removeSession,
 } from "@/auth/token-store";
@@ -17,16 +17,24 @@ import {
 
 const NETWORK_ERROR = "Network error. Please try again.";
 
-/** Shared in-flight refresh so concurrent 401s trigger only one refresh. */
-let refreshInFlight: Promise<TokenPair | null> | null = null;
+/**
+ * In-flight refreshes keyed BY ACCOUNT. Concurrent 401s for the same account
+ * coalesce into one refresh; different accounts refresh independently. Keying by
+ * studentId (rather than a single global promise) is what makes a mid-request
+ * account switch safe — each request refreshes the account it was issued for,
+ * never whichever account happens to be active when the 401 lands.
+ */
+const refreshInFlight = new Map<number, Promise<TokenPair | null>>();
 
-async function refreshActiveTokens(): Promise<TokenPair | null> {
-  if (refreshInFlight) return refreshInFlight;
+async function refreshTokensFor(studentId: number): Promise<TokenPair | null> {
+  const existing = refreshInFlight.get(studentId);
+  if (existing) return existing;
 
-  refreshInFlight = (async () => {
-    const studentId = await getActiveStudentId();
-    const tokens = await getActiveTokens();
-    if (studentId == null || !tokens?.refreshToken) return null;
+  const p = (async (): Promise<TokenPair | null> => {
+    // Read THIS account's refresh token — not the active account's — so a switch
+    // between request-issue and 401 can't refresh/retry the wrong session.
+    const session = await getSessionFor(studentId);
+    if (!session?.refreshToken) return null;
 
     try {
       const res = await fetch(`${env.apiBaseUrl}/api/auth/mobile/refresh`, {
@@ -35,16 +43,22 @@ async function refreshActiveTokens(): Promise<TokenPair | null> {
           "Content-Type": "application/json",
           "ngrok-skip-browser-warning": "true",
         },
-        body: JSON.stringify({ refreshToken: tokens.refreshToken }),
+        body: JSON.stringify({ refreshToken: session.refreshToken }),
       });
       if (!res.ok) {
-        // Refresh token rejected/expired → drop this account's session.
-        await removeSession(studentId);
+        // ONLY a definitive auth rejection (401/403) means the refresh token is
+        // truly dead — drop the account. A transient server error (5xx) or
+        // gateway blip during a deploy must NOT sign the user out: keep the
+        // tokens and let the caller surface an error / retry, same as offline.
+        if (res.status === 401 || res.status === 403) {
+          await removeSession(studentId);
+        }
         return null;
       }
       const body = (await res.json()) as Partial<TokenPair>;
       if (!body.accessToken || !body.refreshToken) {
-        await removeSession(studentId);
+        // 2xx but malformed — a server contract violation, not proof the token
+        // is invalid. Don't nuke the session over it; surface as a failed refresh.
         return null;
       }
       const rotated: TokenPair = {
@@ -58,10 +72,11 @@ async function refreshActiveTokens(): Promise<TokenPair | null> {
     }
   })();
 
+  refreshInFlight.set(studentId, p);
   try {
-    return await refreshInFlight;
+    return await p;
   } finally {
-    refreshInFlight = null;
+    refreshInFlight.delete(studentId);
   }
 }
 
@@ -113,13 +128,23 @@ export async function apiRequest<T = unknown>(
   path: string,
   opts: RequestOptions = {},
 ): Promise<ApiResponse<T>> {
-  const tokens = await getActiveTokens();
-  const first = await doFetch<T>(path, opts, tokens?.accessToken ?? null);
+  // Bind this request to the account active NOW. Everything below (the Bearer
+  // token, the on-401 refresh, the retry) uses this captured account — so a
+  // concurrent account switch can never make the retry go out with another
+  // account's token and return the wrong student's data.
+  const studentId = await getActiveStudentId();
+  const session = studentId != null ? await getSessionFor(studentId) : null;
+  const first = await doFetch<T>(path, opts, session?.accessToken ?? null);
 
   if ("networkError" in first) return { error: NETWORK_ERROR };
 
-  if (first.status === 401 && opts.auth !== false && tokens?.accessToken) {
-    const rotated = await refreshActiveTokens();
+  if (
+    first.status === 401 &&
+    opts.auth !== false &&
+    studentId != null &&
+    session?.accessToken
+  ) {
+    const rotated = await refreshTokensFor(studentId);
     if (rotated) {
       const retry = await doFetch<T>(path, opts, rotated.accessToken);
       if ("networkError" in retry) return { error: NETWORK_ERROR };

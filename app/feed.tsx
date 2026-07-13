@@ -84,6 +84,7 @@ const ROUTE: Record<FeedCategory, Href> = {
   lab: "/health",
   report: "/(tabs)/academics/report",
   marks: "/(tabs)/academics/exams",
+  attendance: "/(tabs)/academics/attendance",
 };
 
 const ICON: Record<FeedCategory, { name: keyof typeof Ionicons.glyphMap; tint: string; fg: string }> = {
@@ -95,6 +96,7 @@ const ICON: Record<FeedCategory, { name: keyof typeof Ionicons.glyphMap; tint: s
   lab: { name: "flask-outline", tint: colors.amberBg, fg: colors.amber },
   report: { name: "document-text-outline", tint: palette.primary50, fg: colors.navy },
   marks: { name: "reader-outline", tint: colors.blueBg, fg: colors.blue },
+  attendance: { name: "calendar-outline", tint: colors.greenBg, fg: colors.green },
 };
 
 function FeedRow({ item }: { item: FeedItem }) {

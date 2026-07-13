@@ -76,6 +76,18 @@ export async function getAccounts(): Promise<AccountRef[]> {
   return (await readIndex()).accounts;
 }
 
+/**
+ * Read a SPECIFIC account's stored session (tokens + user), regardless of which
+ * account is currently active. Needed to (a) revoke a non-active account's
+ * refresh token server-side on removal, and (b) bind an in-flight token refresh
+ * to the account that made the request even if the user switches meanwhile.
+ */
+export async function getSessionFor(
+  studentId: number
+): Promise<StoredSession | null> {
+  return readSession(studentId);
+}
+
 export async function getActiveStudentId(): Promise<number | null> {
   return (await readIndex()).activeStudentId;
 }

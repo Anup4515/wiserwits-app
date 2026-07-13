@@ -243,7 +243,7 @@ export interface SelfHolisticRow {
 // ── Activity feed (/feed — NEW in Phase 3) ──────────────────────────────────
 export type FeedCategory =
   | "assignment" | "advice" | "feedback" | "consultation"
-  | "diet" | "lab" | "report" | "marks";
+  | "diet" | "lab" | "report" | "marks" | "attendance";
 
 export interface FeedItem {
   id: string;             // stable across categories, e.g. "assignment:123"
@@ -315,4 +315,45 @@ export interface ContributorGrant {
   scope_attendance: number; scope_marks: number; scope_timetable: number; scope_holistic: number;
   contributor_name: string | null;
   invited_at: string; accepted_at: string | null; expires_at: string | null;
+}
+
+// ── Subscription & plans (/subscription — Phase 4) ──────────────────────────
+// `price_inr` arrives as a STRING (pg DECIMAL). `feature_labels` is the
+// human-readable list shown on each plan card (null when a plan bundles none).
+export interface PlanRow {
+  id: number; slug: string; name: string; description: string | null;
+  price_inr: string; duration_days: number; sort_order: number;
+  feature_labels: string[] | null;
+}
+
+// One row of student_subscriptions_v2 joined to its plan. `currentSubscription`
+// drives features today; `scheduledSubscription` is a queued downgrade.
+export interface SubscriptionRow {
+  id: number; plan_id: number; plan_slug: string; plan_name: string;
+  status: string; starts_at: string | null; expires_at: string | null;
+  payer_type: "student" | "partner" | "platform"; payer_partner_id: number | null;
+}
+
+export interface SubscriptionData {
+  currentSubscription: SubscriptionRow | null;
+  scheduledSubscription: SubscriptionRow | null;
+  plans: PlanRow[];
+}
+
+// POST /subscription/order → the payload the app hands to Razorpay checkout.
+export interface OrderResponse {
+  order_id: string; key_id: string; amount: number; currency: string;
+  plan_id: number; plan_name: string;
+  prefill?: { name?: string; email?: string };
+}
+
+// POST /subscription/verify → what the four-case dispatcher applied.
+export interface VerifyResponse {
+  subscription_id: number | null;
+  plan_name: string;
+  action: "first_buy" | "upgrade" | "extend_active" | "schedule_downgrade" | "already_processed";
+  status: "active" | "scheduled" | string;
+  starts_at: string; expires_at: string;
+  auto_enrolled_course_ids: number[];
+  already_processed?: boolean;
 }
