@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import * as authApi from "@/api/auth";
+import { track } from "@/lib/analytics";
 import type { SessionUser } from "@/api/types";
 import {
   addSession,
@@ -93,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         accessToken: res.accessToken,
         refreshToken: res.refreshToken,
       });
+      track("login");
       await reload();
       return { ok: true };
     },

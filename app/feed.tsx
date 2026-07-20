@@ -7,6 +7,7 @@ import { useFeed, useMarkFeedRead } from "@/api/hooks";
 import { Card } from "@/components/ui";
 import { QueryView } from "@/components/QueryView";
 import { EmptyState } from "@/components/data-ui";
+import { track } from "@/lib/analytics";
 import { colors, palette, spacing, radius, typography } from "@/theme";
 import type { FeedCategory, FeedData, FeedItem } from "@/api/student-types";
 
@@ -31,6 +32,15 @@ export default function FeedScreen() {
       markRead.mutate();
     }
   }, [hasUnread, markRead]);
+
+  // Retention signal (Phase 4.10): one feed-open event per screen visit.
+  const opened = useRef(false);
+  useEffect(() => {
+    if (!opened.current) {
+      opened.current = true;
+      track("feed_opened");
+    }
+  }, []);
 
   return (
     <ScrollView

@@ -9,6 +9,7 @@ import { api } from "@/api/client";
 import { QueryView } from "@/components/QueryView";
 import { Card, Button, Pill } from "@/components/ui";
 import { SectionHeader } from "@/components/data-ui";
+import { track } from "@/lib/analytics";
 import { colors, palette, spacing, radius, typography } from "@/theme";
 import {
   isRazorpayAvailable,
@@ -109,6 +110,7 @@ function SubscriptionBody({ data }: { data: SubscriptionData }) {
         );
       }
 
+      track("plan_purchased", { plan_id: order.plan_id, action: verifyRes.data.action });
       // Unlock newly-granted features and refresh the plan-gated screens.
       await refreshSession();
       await Promise.all([

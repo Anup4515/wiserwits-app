@@ -357,3 +357,116 @@ export interface VerifyResponse {
   auto_enrolled_course_ids: number[];
   already_processed?: boolean;
 }
+
+// ── Courses / learning (Phase 4.5) ──────────────────────────────────────────
+// `price` is a pg DECIMAL → STRING. Booleans are real JSON true/false.
+export interface CourseCardRow {
+  id: number;
+  title: string;
+  slug: string;
+  description: string | null;
+  price: string;               // "499.00"
+  duration_hours: number | null;
+  level: string | null;
+  image: string | null;
+  type_of_course: string | null;
+  is_published: boolean;
+  is_enrolled: boolean;
+}
+export interface CourseListResponse {
+  enrolled: CourseCardRow[];
+  catalog: CourseCardRow[];
+}
+export interface CourseEnrolResponse {
+  enrolled: true;
+  course_id: number;
+}
+// GET /courses/{slug} → nested under data.course.
+export interface CourseDetail {
+  id: number;
+  title: string;
+  slug: string;
+  description: string | null;
+  price: string;
+  duration_hours: number | null;
+  level: string | null;
+  image: string | null;
+  type_of_course: string | null;
+  videos: string[];            // normalised server-side, never null
+  documents: string[];
+  is_enrolled: boolean;
+}
+export interface CourseDetailResponse {
+  course: CourseDetail;
+}
+// POST /courses/order → handed to Razorpay. `amount` is paise (integer).
+export interface CourseOrderResponse {
+  order_id: string;
+  key_id: string;
+  amount: number;
+  currency: "INR";
+  course_id: number;
+  course_title: string;
+  prefill?: { name: string; email: string };
+}
+// POST /courses/verify
+export interface CourseVerifyResponse {
+  purchase_id: number | null;
+  course_slug: string;
+  course_title: string;
+  already_processed: boolean;
+}
+
+// ── Content screens (Phase 4.7) ─────────────────────────────────────────────
+export interface CertificateRow {
+  id: number;
+  title: string;
+  description: string | null;  // always null (server sends NULL::text)
+  file_url: string | null;
+  created_at: string;
+}
+export interface LiveClassRow {
+  id: number;
+  title: string;
+  description: string | null;
+  class_type: string | null;
+  start_time: string;
+  join_link: string | null;
+  status: "scheduled" | "live" | "completed" | "cancelled";
+  recording_url: string | null;
+  created_at: string;
+}
+export interface WorkshopRow {
+  id: number;
+  title: string;
+  description: string | null;
+  join_link: string | null;
+  start_date: string;          // DATE as STRING
+  end_date: string | null;     // always null
+  created_at: string;
+}
+export interface ArticleRow {
+  slug: string;
+  badge: string | null;
+  title: string;
+  excerpt: string | null;
+}
+export interface ArticleSection {
+  heading: string | null;
+  paragraph: string;
+}
+export interface ArticleDetail {
+  slug: string;
+  badge: string | null;
+  title: string;
+  excerpt: string | null;
+  sections: ArticleSection[];
+  updated_at: string;
+}
+export interface ReminderRow {
+  id: number;
+  title: string;
+  description: string | null;
+  appointment_date: string;    // DATE as STRING
+  created_at: string;
+}

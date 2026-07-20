@@ -9,6 +9,7 @@ import { queryClient } from "@/lib/query-client";
 import { colors } from "@/theme";
 import { AuthProvider, useAuth } from "@/auth/AuthContext";
 import { EnrollmentProvider } from "@/features/enrollment/EnrollmentContext";
+import { track } from "@/lib/analytics";
 
 /**
  * Root layout (plan §7). Wires global providers and the AUTH GATE:
@@ -18,6 +19,11 @@ function RootNavigator() {
   const { status } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+
+  // One-shot app-open event (Phase 4.10 analytics).
+  useEffect(() => {
+    track("app_open");
+  }, []);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -58,6 +64,21 @@ function RootNavigator() {
       <Stack.Screen name="assignments" options={{ title: "Assignments" }} />
       <Stack.Screen name="contributors" options={{ title: "Contributors" }} />
       <Stack.Screen name="subscription" options={{ title: "Plans & Subscription" }} />
+
+      {/* Phase 4 — learning, content, settings */}
+      <Stack.Screen name="courses" options={{ title: "Courses" }} />
+      <Stack.Screen name="course/[slug]" options={{ title: "Course" }} />
+      <Stack.Screen name="certificates" options={{ title: "Certificates" }} />
+      <Stack.Screen name="live-classes" options={{ title: "Live classes" }} />
+      <Stack.Screen name="workshops" options={{ title: "Workshops" }} />
+      <Stack.Screen name="articles" options={{ title: "Learn" }} />
+      <Stack.Screen name="article/[slug]" options={{ title: "Article" }} />
+      <Stack.Screen name="reminders" options={{ title: "Reminders" }} />
+      <Stack.Screen name="feedback" options={{ title: "Consultant feedback" }} />
+      <Stack.Screen name="search" options={{ title: "Search" }} />
+      <Stack.Screen name="account-security" options={{ title: "Account & Security" }} />
+      <Stack.Screen name="help" options={{ title: "Help & Legal" }} />
+
       <Stack.Screen
         name="quick-actions"
         options={{ presentation: "modal", title: "Quick actions" }}

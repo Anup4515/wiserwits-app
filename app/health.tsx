@@ -171,7 +171,11 @@ function DietPlansSection({ rows }: { rows: DietPlanRow[] }) {
       <SectionHeader title="Diet plans" />
       {rows.length === 0 ? (
         <Card>
-          <EmptyState icon="nutrition-outline" title="No diet plans shared" />
+          <EmptyState
+            icon="nutrition-outline"
+            title="No diet plans shared"
+            subtitle="Diet plans shared by your consultant will appear here."
+          />
         </Card>
       ) : (
         <Card style={{ gap: spacing.md }}>
@@ -199,7 +203,11 @@ function LabReportsSection({ rows }: { rows: LabReportRow[] }) {
       <SectionHeader title="Lab reports" />
       {rows.length === 0 ? (
         <Card>
-          <EmptyState icon="flask-outline" title="No lab reports shared" />
+          <EmptyState
+            icon="flask-outline"
+            title="No lab reports shared"
+            subtitle="Lab reports shared by your consultant will appear here."
+          />
         </Card>
       ) : (
         <Card style={{ gap: spacing.md }}>

@@ -64,7 +64,7 @@ export default function AssignmentsScreen() {
                 <EmptyState
                   icon="clipboard-outline"
                   title="No assignments"
-                  subtitle="Work set by your school will show up here as it's assigned."
+                  subtitle="Assignments shared by your consultant will show up here as they're added."
                 />
               </Card>
             );

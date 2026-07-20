@@ -8,7 +8,7 @@ import { colors, palette, spacing, radius, typography } from "@/theme";
 
 /**
  * Profile (mock 10) — account header + management (switch / add / sign out,
- * §5a) plus entry points to Plans & subscription. Settings land in a later phase.
+ * §5a) plus entry points to learning, plans, settings and account security.
  */
 export default function Profile() {
   const { user, accounts, signOut } = useAuth();
@@ -18,6 +18,9 @@ export default function Profile() {
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       <Card style={styles.header}>
+        <Pressable style={styles.searchBtn} onPress={() => router.push("/search")} accessibilityRole="button" accessibilityLabel="Search">
+          <Ionicons name="search-outline" size={20} color={colors.navy} />
+        </Pressable>
         <Avatar name={user?.name ?? "?"} size={64} />
         <Text style={styles.name}>{user?.name ?? "—"}</Text>
         <Text style={styles.email}>{user?.email}</Text>
@@ -62,6 +65,47 @@ export default function Profile() {
         />
       </Card>
 
+      <Text style={styles.sectionH}>Learn</Text>
+      <Card style={styles.list}>
+        <Row
+          icon="school-outline"
+          title="Courses"
+          subtitle="Browse, enrol and continue learning"
+          onPress={() => router.push("/courses")}
+        />
+        <Row
+          icon="videocam-outline"
+          title="Live classes"
+          subtitle="Upcoming and recorded sessions"
+          onPress={() => router.push("/live-classes")}
+        />
+        <Row
+          icon="easel-outline"
+          title="Workshops"
+          subtitle="Workshops & webinars"
+          onPress={() => router.push("/workshops")}
+        />
+        <Row
+          icon="ribbon-outline"
+          title="Certificates"
+          subtitle="Your earned certificates"
+          onPress={() => router.push("/certificates")}
+        />
+        <Row
+          icon="book-outline"
+          title="Learn"
+          subtitle="Articles & guides"
+          onPress={() => router.push("/articles")}
+        />
+        <Row
+          icon="alarm-outline"
+          title="Reminders"
+          subtitle="Appointments & tests"
+          onPress={() => router.push("/reminders")}
+          last
+        />
+      </Card>
+
       <Text style={styles.sectionH}>Account</Text>
       <Card style={styles.list}>
         <Row
@@ -71,17 +115,25 @@ export default function Profile() {
           onPress={() => router.push("/subscription")}
         />
         <Row
+          icon="lock-closed-outline"
+          title="Account & Security"
+          subtitle="Password and devices"
+          onPress={() => router.push("/account-security")}
+        />
+        <Row
           icon="people-outline"
           title={accounts.length > 1 ? "Switch or manage accounts" : "Add another account"}
           subtitle={accounts.length > 1 ? `${accounts.length} accounts on this device` : "e.g. a sibling"}
           onPress={() => router.push("/account-switcher")}
         />
+        <Row
+          icon="help-circle-outline"
+          title="Help & Legal"
+          subtitle="Support, privacy and terms"
+          onPress={() => router.push("/help")}
+        />
         <Row icon="log-out-outline" title="Sign out" danger onPress={() => void signOut()} last />
       </Card>
-
-      <Text style={styles.note}>
-        Settings arrive in a later phase.
-      </Text>
     </ScrollView>
   );
 }
@@ -119,6 +171,18 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.bg },
   container: { padding: spacing.lg, gap: spacing.md },
   header: { alignItems: "center", gap: spacing.xs },
+  searchBtn: {
+    position: "absolute",
+    top: spacing.md,
+    right: spacing.md,
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    backgroundColor: palette.primary50,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1,
+  },
   name: { ...typography.h1, color: colors.ink, marginTop: spacing.sm },
   email: { ...typography.body, color: colors.textMuted },
   pills: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },

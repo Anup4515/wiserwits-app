@@ -12,11 +12,17 @@ import { useSourceQuery, type SourceQueryResult } from "@/api/query";
 import { useApiMutation } from "@/api/mutations";
 import type {
   AdviceRow,
+  ArticleDetail,
+  ArticleRow,
   AssignmentRow,
   AttendanceData,
   CalendarData,
+  CertificateRow,
   ConsultationRow,
   ContributorGrant,
+  CourseDetailResponse,
+  CourseEnrolResponse,
+  CourseListResponse,
   DashboardData,
   DietPlanRow,
   ExamRow,
@@ -25,7 +31,9 @@ import type {
   HealthData,
   InsightsData,
   LabReportRow,
+  LiveClassRow,
   MarksData,
+  ReminderRow,
   ReportCardRow,
   SelfCalendarData,
   SelfReportData,
@@ -33,6 +41,7 @@ import type {
   SubscriptionData,
   TeacherFeedbackRow,
   TimetableData,
+  WorkshopRow,
 } from "@/api/student-types";
 
 /** Home — always-allowed; one endpoint handles both sources internally. */
@@ -296,5 +305,101 @@ export function useMarkFeedRead() {
   return useApiMutation<{ ok: boolean }, void>({
     path: "/api/student/feed",
     invalidate: [["feed"]],
+  });
+}
+
+// ── Phase 4: content read screens ───────────────────────────────────────────
+
+/** Course catalog + the student's enrolled courses (always-allowed). */
+export function useCourses(): SourceQueryResult<CourseListResponse> {
+  return useSourceQuery<CourseListResponse>({
+    key: "courses",
+    build: () => ({ path: "/api/student/courses" }),
+  });
+}
+
+/** One course's detail (enrolled only — the endpoint 403s otherwise). */
+export function useCourse(slug: string): SourceQueryResult<CourseDetailResponse> {
+  return useSourceQuery<CourseDetailResponse>({
+    key: "course",
+    enabled: !!slug,
+    keyExtra: [slug],
+    build: () => ({ path: `/api/student/courses/${slug}` }),
+  });
+}
+
+/** Certificates issued to the student. */
+export function useCertificates(): SourceQueryResult<CertificateRow[]> {
+  return useSourceQuery<CertificateRow[]>({
+    key: "certificates",
+    feature: FEATURE.certificates,
+    build: () => ({ path: "/api/student/certificates" }),
+  });
+}
+
+/** Live classes the student is enrolled in. */
+export function useLiveClasses(): SourceQueryResult<LiveClassRow[]> {
+  return useSourceQuery<LiveClassRow[]>({
+    key: "liveClasses",
+    feature: FEATURE.liveClasses,
+    build: () => ({ path: "/api/student/live-classes" }),
+  });
+}
+
+/** Workshops & webinars (student-specific + broadcast). */
+export function useWorkshops(): SourceQueryResult<WorkshopRow[]> {
+  return useSourceQuery<WorkshopRow[]>({
+    key: "workshops",
+    feature: FEATURE.workshops,
+    build: () => ({ path: "/api/student/workshops" }),
+  });
+}
+
+/** Reminders (appointments / tests). */
+export function useReminders(): SourceQueryResult<ReminderRow[]> {
+  return useSourceQuery<ReminderRow[]>({
+    key: "reminders",
+    feature: FEATURE.reminders,
+    build: () => ({ path: "/api/student/reminders" }),
+  });
+}
+
+/** Learning articles (always-allowed). */
+export function useArticles(): SourceQueryResult<ArticleRow[]> {
+  return useSourceQuery<ArticleRow[]>({
+    key: "articles",
+    build: () => ({ path: "/api/student/articles" }),
+  });
+}
+
+/** One article's full content. */
+export function useArticle(slug: string): SourceQueryResult<ArticleDetail> {
+  return useSourceQuery<ArticleDetail>({
+    key: "article",
+    enabled: !!slug,
+    keyExtra: [slug],
+    build: () => ({ path: `/api/student/articles/${slug}` }),
+  });
+}
+
+// ── Phase 4 mutations ───────────────────────────────────────────────────────
+
+/** Free enrolment into a published course (id → POST /courses). */
+export function useEnrollCourse() {
+  return useApiMutation<CourseEnrolResponse, number>({
+    path: "/api/student/courses",
+    body: (course_id) => ({ course_id }),
+    invalidate: [["courses"], ["course"], ["dashboard"]],
+  });
+}
+
+/** Change the signed-in account's password. */
+export function useChangePassword() {
+  return useApiMutation<
+    { ok: boolean },
+    { current_password: string; new_password: string }
+  >({
+    path: "/api/student/account/change-password",
+    body: (v) => v,
   });
 }

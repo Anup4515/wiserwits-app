@@ -42,13 +42,13 @@ export default function AdviceScreen() {
 
       {!feedbackResult.locked ? (
         <View style={{ gap: spacing.md }}>
-          <SectionHeader title="Teacher feedback" />
+          <SectionHeader title="Consultant feedback" />
           {feedback.length === 0 ? (
             <Card>
               <EmptyState
                 icon="chatbox-ellipses-outline"
                 title="No feedback yet"
-                subtitle="Notes your teachers share about your work will appear here."
+                subtitle="Notes your consultant shares about your work will appear here."
               />
             </Card>
           ) : (
