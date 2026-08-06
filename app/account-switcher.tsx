@@ -83,7 +83,7 @@ export default function AccountSwitcher() {
       <View style={styles.headerRow}>
         <View style={{ flex: 1 }}>
           <Text style={styles.heading}>
-            {selectMode ? "Sign out" : "Your accounts"}
+            {selectMode ? "Sign out" : "Accounts"}
           </Text>
           <Text style={styles.subheading}>
             {selectMode

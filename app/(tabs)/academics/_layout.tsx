@@ -30,6 +30,7 @@ export default function AcademicsLayout() {
       <Stack.Screen name="exams" options={{ title: "Exams & Marks" }} />
       <Stack.Screen name="marks" options={{ title: "Marks" }} />
       <Stack.Screen name="report" options={{ title: "Report Card" }} />
+      <Stack.Screen name="holistic" options={{ title: "Holistic" }} />
       <Stack.Screen name="timetable" options={{ title: "Timetable" }} />
       <Stack.Screen name="calendar" options={{ title: "Calendar" }} />
     </Stack>

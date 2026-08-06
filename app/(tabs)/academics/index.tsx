@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/auth/AuthContext";
 import { useEnrollment } from "@/features/enrollment/EnrollmentContext";
+import { EnrollmentSwitcher } from "@/features/enrollment/EnrollmentSwitcher";
 import { SourceBadge } from "@/components/data-ui";
 import { hasFeature, FEATURE } from "@/lib/features";
 import { gradients, colors, palette, spacing, radius, typography, shadow } from "@/theme";
@@ -30,6 +31,7 @@ export default function AcademicsHub() {
     { href: "/(tabs)/academics/attendance", icon: "calendar-outline", label: "Attendance", desc: "Daily record & percentage", feature: FEATURE.attendance },
     { href: "/(tabs)/academics/exams", icon: "reader-outline", label: "Exams & Marks", desc: "Results by exam and subject", feature: FEATURE.exams },
     { href: "/(tabs)/academics/report", icon: "document-text-outline", label: "Report Card", desc: "Term summaries & grades", feature: FEATURE.report },
+    { href: "/(tabs)/academics/holistic", icon: "sparkles-outline", label: "Holistic", desc: "Development ratings by parameter", feature: FEATURE.holistic },
     { href: "/(tabs)/academics/timetable", icon: "time-outline", label: "Timetable", desc: "Weekly class schedule", feature: FEATURE.timetable },
     { href: "/(tabs)/academics/calendar", icon: "today-outline", label: "Calendar", desc: "Holidays, workshops & live classes", feature: FEATURE.calendar },
   ];
@@ -41,6 +43,11 @@ export default function AcademicsHub() {
           <Text style={styles.heroTitle}>Academics</Text>
           <View style={{ marginTop: spacing.sm }}>
             <SourceBadge source={source} schoolLabel={user?.enrollment_id != null ? "School records" : null} />
+          </View>
+          {/* Class switcher — only renders for students enrolled in >1 class;
+              its selection scopes every academics sub-screen below. */}
+          <View style={{ marginTop: spacing.md }}>
+            <EnrollmentSwitcher />
           </View>
         </SafeAreaView>
       </LinearGradient>

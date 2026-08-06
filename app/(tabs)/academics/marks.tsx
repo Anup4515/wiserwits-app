@@ -7,7 +7,7 @@ import { Card } from "@/components/ui";
 import { QueryView } from "@/components/QueryView";
 import { SectionHeader, EmptyState } from "@/components/data-ui";
 import { ProgressRing } from "@/components/charts";
-import { time12, shortDate, scoreColor, gradeColor } from "@/lib/format";
+import { time12, shortDate, scoreColor, gradeColor, isGraded } from "@/lib/format";
 import { colors, spacing, radius, typography } from "@/theme";
 import type { ExamRow, MarksData } from "@/api/student-types";
 
@@ -68,12 +68,20 @@ function MarksBody({ data }: { data: MarksData }) {
           value={data.summary.percentage}
           size={116}
           color={scoreColor(data.summary.percentage)}
-          centerLabel={data.summary.grade ?? `${Math.round(data.summary.percentage)}%`}
+          centerLabel={
+            isGraded(data.summary.grade)
+              ? data.summary.grade!
+              : `${Math.round(data.summary.percentage)}%`
+          }
           centerSub={`${data.summary.total_obtained}/${data.summary.total_max}`}
         />
         <View style={{ flex: 1, gap: 4 }}>
           <Text style={styles.summaryTitle}>Overall</Text>
-          <Text style={styles.summaryPct}>{Math.round(data.summary.percentage)}%</Text>
+          {/* The ring already shows the % when there's no grade — only repeat it
+              here as the numeric companion to a grade, so it never doubles up. */}
+          {isGraded(data.summary.grade) ? (
+            <Text style={styles.summaryPct}>{Math.round(data.summary.percentage)}%</Text>
+          ) : null}
           <Text style={styles.summarySub}>
             {data.summary.total_obtained} out of {data.summary.total_max} marks
           </Text>
@@ -106,7 +114,7 @@ function MarksBody({ data }: { data: MarksData }) {
                     {m.obtained_marks ?? "—"}
                     <Text style={styles.marksMax}> / {m.maximum_marks}</Text>
                   </Text>
-                  {m.grade ? (
+                  {isGraded(m.grade) ? (
                     <View style={[styles.gradeChip, { backgroundColor: gradeColor(m.grade) }]}>
                       <Text style={styles.gradeChipText}>{m.grade}</Text>
                     </View>

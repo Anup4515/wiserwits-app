@@ -40,8 +40,8 @@ export default function TabsLayout() {
         options={{
           title: "Home",
           headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" color={color} size={size} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "home" : "home-outline"} color={color} size={size} />
           ),
         }}
       />
@@ -50,8 +50,8 @@ export default function TabsLayout() {
         options={{
           title: "Insights",
           headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="stats-chart-outline" color={color} size={size} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "stats-chart" : "stats-chart-outline"} color={color} size={size} />
           ),
         }}
       />
@@ -79,18 +79,39 @@ export default function TabsLayout() {
         options={{
           title: "Academics",
           headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="school-outline" color={color} size={size} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "school" : "school-outline"} color={color} size={size} />
           ),
+        }}
+        listeners={{
+          // Always land on the Academics hub when the tab is tapped. Without
+          // this, a sub-screen reached via a Home "Explore" deep-link
+          // (router.push to /(tabs)/academics/attendance) can leave the user
+          // stranded with no back route to the hub — the nested stack's
+          // initialRouteName anchor isn't guaranteed across a cross-tab push.
+          tabPress: (e) => {
+            e.preventDefault();
+            router.navigate("/(tabs)/academics");
+          },
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="health"
         options={{
-          title: "Profile",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" color={color} size={size} />
+          title: "Health",
+          headerShown: false,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "heart" : "heart-outline"} color={color} size={size} />
           ),
+        }}
+        listeners={{
+          // Always land on the Health hub when the tab is tapped, so a sub-screen
+          // reached via a Home/Explore deep-link never strands the user without a
+          // route back to the hub (same rationale as the Academics tab).
+          tabPress: (e) => {
+            e.preventDefault();
+            router.navigate("/(tabs)/health");
+          },
         }}
       />
     </Tabs>

@@ -38,7 +38,7 @@ export default function RemindersScreen() {
             <EmptyState
               icon="alarm-outline"
               title="No reminders yet"
-              subtitle="Your reminders will appear here."
+              subtitle="Reminders will appear here."
             />
           ) : (
             <View style={{ gap: spacing.md }}>

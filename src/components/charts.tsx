@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import Svg, { Circle, Polyline, Line, Circle as Dot } from "react-native-svg";
+import Svg, { Circle, Polyline, Line, Circle as Dot, Text as SvgText } from "react-native-svg";
 import { colors, palette, spacing, typography } from "@/theme";
 
 /**
@@ -123,32 +123,59 @@ export function TrendChart({
   points,
   height = 120,
   color = colors.navy,
+  domain = "fixed",
+  formatValue = (v) => `${Math.round(v)}%`,
 }: {
   points: { label: string; value: number }[];
   height?: number;
   color?: string;
+  /**
+   * Y-axis scaling. "fixed" pins 0–100 (percentages, e.g. attendance). "auto"
+   * fits the axis snugly around the data with a little padding — for series
+   * that live in a narrow band (e.g. BMI ~18–30) where a 0–100 axis would
+   * flatten every change into a straight line.
+   */
+  domain?: "fixed" | "auto";
+  /** Format for the value shown above each point (default a percentage). */
+  formatValue?: (v: number) => string;
 }) {
   const [width, setWidth] = useState(0);
   if (points.length === 0) return null;
 
   const padX = 10;
-  const padTop = 12;
+  // Extra top padding leaves room for the value label that sits above each dot.
+  const padTop = 24;
   const padBottom = 22;
   const chartH = height - padTop - padBottom;
   const usableW = Math.max(width - padX * 2, 1);
-  const maxV = 100;
+
+  // Resolve the y-range. Auto fits the data (min span of 4 so a truly flat
+  // series still sits mid-chart rather than exaggerating rounding noise).
+  const values = points.map((p) => p.value);
+  let minV = 0;
+  let maxV = 100;
+  if (domain === "auto") {
+    const lo = Math.min(...values);
+    const hi = Math.max(...values);
+    const pad = Math.max((hi - lo) * 0.5, 2);
+    minV = lo - pad;
+    maxV = hi + pad;
+  }
+  const span = maxV - minV || 1;
 
   const xFor = (i: number) =>
     points.length === 1 ? padX + usableW / 2 : padX + (usableW * i) / (points.length - 1);
-  const yFor = (v: number) => padTop + chartH * (1 - Math.max(0, Math.min(maxV, v)) / maxV);
+  const yFor = (v: number) =>
+    padTop + chartH * (1 - (Math.max(minV, Math.min(maxV, v)) - minV) / span);
 
+  const gridLines = [minV, (minV + maxV) / 2, maxV];
   const polyline = points.map((p, i) => `${xFor(i)},${yFor(p.value)}`).join(" ");
 
   return (
     <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       {width > 0 ? (
         <Svg width={width} height={height}>
-          {[0, 50, 100].map((g) => (
+          {gridLines.map((g) => (
             <Line
               key={g}
               x1={padX}
@@ -170,6 +197,20 @@ export function TrendChart({
           />
           {points.map((p, i) => (
             <Dot key={i} cx={xFor(i)} cy={yFor(p.value)} r={3.5} fill={color} />
+          ))}
+          {/* Value above each point so the graph is readable on its own. */}
+          {points.map((p, i) => (
+            <SvgText
+              key={`v${i}`}
+              x={xFor(i)}
+              y={Math.max(yFor(p.value) - 8, 10)}
+              fontSize={10}
+              fontWeight="700"
+              fill={colors.ink}
+              textAnchor="middle"
+            >
+              {formatValue(p.value)}
+            </SvgText>
           ))}
         </Svg>
       ) : (

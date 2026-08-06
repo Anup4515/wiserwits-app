@@ -45,7 +45,7 @@ export default function CertificatesScreen() {
             <EmptyState
               icon="ribbon-outline"
               title="No certificates yet"
-              subtitle="Your certificates will appear here."
+              subtitle="Certificates will appear here."
             />
           ) : (
             <View style={{ gap: spacing.md }}>

@@ -22,6 +22,9 @@ import type { ViewerRole } from "@/lib/copy";
 const INDEX_KEY = "ww.accounts";
 const sessionKey = (studentId: number) => `ww.session.${studentId}`;
 
+/** Max distinct accounts one device may hold at once (plan §5a guardrail). */
+export const MAX_ACCOUNTS = 4;
+
 export interface AccountRef {
   studentId: number;
   name: string;
@@ -74,6 +77,17 @@ async function writeSession(
 
 export async function getAccounts(): Promise<AccountRef[]> {
   return (await readIndex()).accounts;
+}
+
+/**
+ * Whether `studentId` may be added to this device. An account that is ALREADY
+ * stored is always allowed (re-login just refreshes its tokens — not a new
+ * slot); a genuinely new account is allowed only while under MAX_ACCOUNTS.
+ */
+export async function canAddAccount(studentId: number): Promise<boolean> {
+  const { accounts } = await readIndex();
+  if (accounts.some((a) => a.studentId === studentId)) return true;
+  return accounts.length < MAX_ACCOUNTS;
 }
 
 /**

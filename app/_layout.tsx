@@ -59,7 +59,6 @@ function RootNavigator() {
 
       {/* Phase 3 — retention + write surfaces */}
       <Stack.Screen name="feed" options={{ title: "Activity" }} />
-      <Stack.Screen name="health" options={{ title: "Health & Wellness" }} />
       <Stack.Screen name="advice" options={{ title: "Advice & Feedback" }} />
       <Stack.Screen name="assignments" options={{ title: "Assignments" }} />
       <Stack.Screen name="contributors" options={{ title: "Contributors" }} />
@@ -77,6 +76,9 @@ function RootNavigator() {
       <Stack.Screen name="feedback" options={{ title: "Consultant feedback" }} />
       <Stack.Screen name="search" options={{ title: "Search" }} />
       <Stack.Screen name="account-security" options={{ title: "Account & Security" }} />
+      <Stack.Screen name="profile-details" options={{ title: "Profile" }} />
+      <Stack.Screen name="profile-edit" options={{ title: "Edit profile" }} />
+      <Stack.Screen name="explore-all" options={{ title: "Explore" }} />
       <Stack.Screen name="help" options={{ title: "Help & Legal" }} />
 
       <Stack.Screen
@@ -89,11 +91,11 @@ function RootNavigator() {
       />
       <Stack.Screen
         name="book-consultation"
-        options={{ presentation: "modal", title: "Book consultation" }}
+        options={{ presentation: "modal", title: "Schedule Consultation" }}
       />
       <Stack.Screen
         name="ask-advice"
-        options={{ presentation: "modal", title: "Ask a consultant" }}
+        options={{ presentation: "modal", title: "Ask Consultant" }}
       />
       <Stack.Screen
         name="invite-contributor"

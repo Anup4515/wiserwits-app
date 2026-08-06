@@ -32,7 +32,7 @@ export function StatTile({
       <View style={[styles.statIc, { backgroundColor: tint }]}>
         <Ionicons name={icon} size={16} color={fg} />
       </View>
-      <Text style={styles.statLab}>{label}</Text>
+      <Text style={styles.statLab} numberOfLines={1}>{label}</Text>
       {loading ? (
         <View style={styles.statSkeleton} />
       ) : (
@@ -171,16 +171,23 @@ export function MonthStepper({
   label,
   onPrev,
   onNext,
+  prevDisabled,
   nextDisabled,
 }: {
   label: string;
   onPrev: () => void;
   onNext: () => void;
+  prevDisabled?: boolean;
   nextDisabled?: boolean;
 }) {
   return (
     <View style={styles.stepper}>
-      <Pressable onPress={onPrev} hitSlop={8} style={styles.stepBtn}>
+      <Pressable
+        onPress={onPrev}
+        hitSlop={8}
+        disabled={prevDisabled}
+        style={[styles.stepBtn, prevDisabled && { opacity: 0.3 }]}
+      >
         <Ionicons name="chevron-back" size={18} color={colors.navy} />
       </Pressable>
       <Text style={styles.stepLabel}>{label}</Text>
@@ -203,7 +210,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.lg,
-    padding: 14,
+    padding: 12,
     ...shadow.card,
   },
   statIc: {
@@ -214,7 +221,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: spacing.sm,
   },
-  statLab: { fontSize: 11.5, color: colors.textMuted, fontWeight: "600" },
+  statLab: { fontSize: 11, color: colors.textMuted, fontWeight: "600" },
   statVal: { fontSize: 25, fontWeight: "800", color: colors.ink, letterSpacing: -0.5, marginTop: 2 },
   statSkeleton: { height: 20, width: "55%", borderRadius: 6, backgroundColor: "#eef1f6", marginTop: 6 },
 

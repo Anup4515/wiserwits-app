@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, Redirect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useInviteContributor } from "@/api/hooks";
+import { useAuth } from "@/auth/AuthContext";
 import { Button, Field, FormError } from "@/components/ui";
 import { colors, spacing, radius, typography } from "@/theme";
 import type { GrantRelationship } from "@/api/student-types";
@@ -34,6 +35,7 @@ export default function InviteContributorScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const invite = useInviteContributor();
+  const { user } = useAuth();
 
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -73,6 +75,10 @@ export default function InviteContributorScreen() {
       { onSuccess: () => router.back() }
     );
   };
+
+  // Enrolled students can't add contributors (the school owns their data), so
+  // this screen is never for them — redirect if reached directly.
+  if (user?.enrollment_id != null) return <Redirect href="/(tabs)" />;
 
   return (
     <ScrollView

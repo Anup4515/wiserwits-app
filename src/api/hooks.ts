@@ -8,8 +8,12 @@
  * marks), the hook's payload is a union; the screen narrows on `source`.
  */
 import { FEATURE } from "@/lib/features";
-import { useSourceQuery, type SourceQueryResult } from "@/api/query";
+import { useSourceQuery, useApiQuery, type SourceQueryResult } from "@/api/query";
 import { useApiMutation } from "@/api/mutations";
+import { api } from "@/api/client";
+import { useAuth } from "@/auth/AuthContext";
+import { useEnrollment } from "@/features/enrollment/EnrollmentContext";
+import { useMutation, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type {
   AdviceRow,
   ArticleDetail,
@@ -21,21 +25,27 @@ import type {
   ConsultationRow,
   ContributorGrant,
   CourseDetailResponse,
+  CourseReviewsData,
+  MyCourseReview,
   CourseEnrolResponse,
   CourseListResponse,
   DashboardData,
   DietPlanRow,
+  EnrollmentRow,
   ExamRow,
   FeedData,
   GrantRelationship,
   HealthData,
+  HolisticParamGroup,
   InsightsData,
   LabReportRow,
   LiveClassRow,
   MarksData,
+  ProfileData,
   ReminderRow,
   ReportCardRow,
   SelfCalendarData,
+  SelfHolisticRow,
   SelfReportData,
   SelfTimetableRow,
   SubscriptionData,
@@ -43,6 +53,85 @@ import type {
   TimetableData,
   WorkshopRow,
 } from "@/api/student-types";
+
+/**
+ * Every class/section this student is enrolled in (current + past). Backs the
+ * class switcher. Uses a bare `useApiQuery` — NOT `useSourceQuery` — because the
+ * list is the same whichever class is selected; folding the `?enrollment_id=`
+ * override in would needlessly refetch on every switch. Only enrolled accounts
+ * have enrollments, so it's gated on `source === "enrolled"`; the account id is
+ * in the cache key so siblings don't share a list.
+ */
+export function useEnrollments(): UseQueryResult<EnrollmentRow[]> {
+  const { activeStudentId } = useAuth();
+  const { source } = useEnrollment();
+  return useApiQuery<EnrollmentRow[]>(
+    ["enrollments", activeStudentId],
+    "/api/student/enrollments",
+    source === "enrolled" && activeStudentId != null,
+  );
+}
+
+/**
+ * The full student record for the profile-details screen (opened from the home
+ * header avatar). A bare `useApiQuery` — the profile isn't source- or
+ * enrollment-scoped, so no `?enrollment_id=` override is threaded; the backend
+ * resolves the record from identity alone and returns it for independent
+ * students too. Account id is in the cache key so siblings don't share.
+ */
+export function useProfile(): UseQueryResult<ProfileData> {
+  const { activeStudentId } = useAuth();
+  return useApiQuery<ProfileData>(
+    ["profile", activeStudentId],
+    "/api/student/profile",
+    activeStudentId != null,
+  );
+}
+
+/** The profile fields a student may edit from the app (mirrors the backend's
+ * ALLOWED_FIELDS + the independent-student grade). All optional — only send
+ * what changed. */
+export interface ProfileUpdate {
+  phone?: string;
+  alternate_phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postal_code?: string;
+  grade_level?: number | null;
+}
+
+/** Save edited profile fields (POST /profile), then refresh the profile and
+ * dashboard (the header/grade may change). */
+export function useUpdateProfile() {
+  return useApiMutation<unknown, ProfileUpdate>({
+    method: "post",
+    path: "/api/student/profile",
+    body: (vars) => vars,
+    invalidate: [["profile"], ["dashboard"]],
+  });
+}
+
+/** Upload a new profile photo (multipart). The picked image is appended as
+ * `file`; on success the profile (and the avatar it feeds) refreshes. */
+export function useUploadProfileImage() {
+  const qc = useQueryClient();
+  return useMutation<{ profile_image: string | null }, Error, FormData>({
+    mutationFn: async (form) => {
+      const res = await api.upload<{ profile_image: string | null }>(
+        "/api/student/profile/image",
+        form,
+      );
+      if (res.error) throw new Error(res.error);
+      return res.data as { profile_image: string | null };
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["profile"] });
+      void qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
 
 /** Home — always-allowed; one endpoint handles both sources internally. */
 export function useDashboard(): SourceQueryResult<DashboardData> {
@@ -112,11 +201,30 @@ export function useReports(): SourceQueryResult<ReportCardRow[] | SelfReportData
   });
 }
 
+/**
+ * Holistic development for one month. Enrolled returns parameter groups (each
+ * with its sub-parameters); self returns a flat list of dimension rows filled
+ * by a contributor. Month-scoped via `?month=YYYY-MM`; the override enrollment
+ * is threaded automatically for enrolled students.
+ */
+export function useHolistic(month: string): SourceQueryResult<HolisticParamGroup[] | SelfHolisticRow[]> {
+  return useSourceQuery<HolisticParamGroup[] | SelfHolisticRow[]>({
+    key: "holistic",
+    feature: FEATURE.holistic,
+    keyExtra: [month],
+    build: (source) => ({
+      path: source === "enrolled" ? "/api/student/holistic" : "/api/student/self/holistic",
+      params: { month },
+    }),
+  });
+}
+
 /** Timetable — enrolled returns periods+slots grid; self a flat slot list. */
-export function useTimetable(): SourceQueryResult<TimetableData | SelfTimetableRow[]> {
+export function useTimetable(enabled = true): SourceQueryResult<TimetableData | SelfTimetableRow[]> {
   return useSourceQuery<TimetableData | SelfTimetableRow[]>({
     key: "timetable",
     feature: FEATURE.timetable,
+    enabled,
     build: (source) => ({
       path: source === "enrolled" ? "/api/student/timetable" : "/api/student/self/timetable",
     }),
@@ -250,6 +358,16 @@ export function useLogBmi() {
   });
 }
 
+/** Delete a BMI reading (id → DELETE /bmi/[id]). Ownership is enforced
+ * server-side. Refreshes the health overview + dashboard's latest-BMI. */
+export function useDeleteBmi() {
+  return useApiMutation<{ id: number }, number>({
+    method: "delete",
+    path: (id) => `/api/student/bmi/${id}`,
+    invalidate: [["health"], ["dashboard"]],
+  });
+}
+
 /** Book a doctor consultation. */
 export function useBookConsultation() {
   return useApiMutation<
@@ -325,6 +443,34 @@ export function useCourse(slug: string): SourceQueryResult<CourseDetailResponse>
     enabled: !!slug,
     keyExtra: [slug],
     build: () => ({ path: `/api/student/courses/${slug}` }),
+  });
+}
+
+/**
+ * Reviews for a course: rating summary, the student's own review, and recent
+ * reviews. A plain `useApiQuery` (not source-split) — reviews are a per-student
+ * course endpoint, not an enrolled/self split. Account id + slug are in the
+ * cache key so switching account or course refetches.
+ */
+export function useCourseReviews(slug: string): UseQueryResult<CourseReviewsData> {
+  const { activeStudentId } = useAuth();
+  return useApiQuery<CourseReviewsData>(
+    ["course-reviews", activeStudentId, slug],
+    `/api/student/courses/${slug}/reviews`,
+    !!slug && activeStudentId != null,
+  );
+}
+
+/**
+ * Post (or update) the student's review for a course. Upserts server-side, so
+ * re-submitting edits the existing review. Refreshes the reviews list on success.
+ */
+export function useSubmitCourseReview(slug: string) {
+  return useApiMutation<{ my_review: MyCourseReview }, { rating: number; feedback: string | null }>({
+    method: "post",
+    path: `/api/student/courses/${slug}/reviews`,
+    body: (vars) => vars,
+    invalidate: [["course-reviews"]],
   });
 }
 

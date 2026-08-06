@@ -10,6 +10,7 @@ import { QueryView } from "@/components/QueryView";
 import { Card, Button, Pill } from "@/components/ui";
 import { SectionHeader } from "@/components/data-ui";
 import { track } from "@/lib/analytics";
+import { mediumDate } from "@/lib/format";
 import { colors, palette, spacing, radius, typography } from "@/theme";
 import {
   isRazorpayAvailable,
@@ -63,6 +64,13 @@ function SubscriptionBody({ data }: { data: SubscriptionData }) {
   const plansById = new Map(data.plans.map((p) => [p.id, p]));
   const currentPrice = current ? Number(plansById.get(current.plan_id)?.price_inr ?? 0) : null;
   const partnerPaid = current != null && current.payer_type !== "student";
+
+  // For each plan, the next-cheaper plan below it. Used to show "Everything in
+  // {cheaper plan}, plus:" and to highlight only the features this tier ADDS —
+  // i.e. what the higher price actually buys.
+  const byPriceAsc = [...data.plans].sort((a, b) => Number(a.price_inr) - Number(b.price_inr));
+  const prevPlanOf = new Map<number, PlanRow | null>();
+  byPriceAsc.forEach((p, i) => prevPlanOf.set(p.id, i > 0 ? byPriceAsc[i - 1] : null));
 
   async function purchase(plan: PlanRow) {
     if (!isRazorpayAvailable()) {
@@ -149,13 +157,13 @@ function SubscriptionBody({ data }: { data: SubscriptionData }) {
             <Pill label="Active" tone="green" />
           </View>
           {current.expires_at ? (
-            <Text style={styles.currentMeta}>Renews / ends {prettyDate(current.expires_at)}</Text>
+            <Text style={styles.currentMeta}>Plan ends on {mediumDate(current.expires_at)}</Text>
           ) : null}
           {partnerPaid ? (
             <View style={styles.noteRow}>
               <Ionicons name="business-outline" size={14} color={colors.textMuted} />
               <Text style={styles.noteText}>
-                Provided by your {current.payer_type === "partner" ? "partner" : "school"} — no charge to you.
+                Provided by the {current.payer_type === "partner" ? "partner" : "school"} — no charge.
               </Text>
             </View>
           ) : null}
@@ -176,7 +184,7 @@ function SubscriptionBody({ data }: { data: SubscriptionData }) {
           <Ionicons name="time-outline" size={15} color={palette.accent600} />
           <Text style={styles.scheduledText}>
             Coming next: <Text style={styles.scheduledStrong}>{scheduled.plan_name}</Text>
-            {scheduled.starts_at ? ` starts ${prettyDate(scheduled.starts_at)}` : ""}.
+            {scheduled.starts_at ? ` starts ${mediumDate(scheduled.starts_at)}` : ""}.
           </Text>
         </View>
       ) : null}
@@ -193,6 +201,7 @@ function SubscriptionBody({ data }: { data: SubscriptionData }) {
             <PlanCard
               key={plan.id}
               plan={plan}
+              prevPlan={prevPlanOf.get(plan.id) ?? null}
               price={price}
               free={free}
               isCurrent={isCurrent}
@@ -221,6 +230,7 @@ function SubscriptionBody({ data }: { data: SubscriptionData }) {
 // ── Plan card ────────────────────────────────────────────────────────────────
 function PlanCard({
   plan,
+  prevPlan,
   price,
   free,
   isCurrent,
@@ -231,6 +241,7 @@ function PlanCard({
   onPress,
 }: {
   plan: PlanRow;
+  prevPlan: PlanRow | null;
   price: number;
   free: boolean;
   isCurrent: boolean;
@@ -240,6 +251,18 @@ function PlanCard({
   disabled: boolean;
   onPress: () => void;
 }) {
+  // What this tier adds over the next-cheaper plan — highlighted so the student
+  // sees why it costs more. If this plan is a clean superset of the cheaper one,
+  // collapse the shared features into an "Everything in X, plus:" line and list
+  // only the extras; otherwise list all features and just accent the new ones.
+  const feats = plan.feature_labels ?? [];
+  const prevFeats = prevPlan?.feature_labels ?? [];
+  const addedSet = new Set(feats.filter((f) => !prevFeats.includes(f)));
+  const additions = feats.filter((f) => addedSet.has(f));
+  const inheritsAll =
+    prevPlan != null && prevFeats.length > 0 && prevFeats.every((f) => feats.includes(f));
+  const shown = inheritsAll && additions.length > 0 ? additions : feats;
+
   return (
     <Card style={[styles.planCard, isCurrent && styles.planCardCurrent]}>
       <View style={styles.planHead}>
@@ -260,18 +283,40 @@ function PlanCard({
         </View>
       </View>
 
-      {plan.feature_labels && plan.feature_labels.length > 0 ? (
+      {shown.length > 0 ? (
         <View style={styles.features}>
-          {plan.feature_labels.map((label, i) => (
-            <View key={i} style={styles.featureRow}>
-              <Ionicons name="checkmark-circle" size={16} color={colors.green} />
-              <Text style={styles.featureText}>{label}</Text>
-            </View>
-          ))}
+          {inheritsAll && additions.length > 0 ? (
+            <Text style={styles.inheritLine}>Everything in {prevPlan!.name}, plus:</Text>
+          ) : null}
+          {shown.slice(0, MAX_FEATURES).map((label, i) => {
+            const highlight = addedSet.has(label);
+            return (
+              <View key={i} style={styles.featureRow}>
+                <Ionicons
+                  name={highlight ? "sparkles" : "checkmark-circle"}
+                  size={16}
+                  color={highlight ? colors.gold : colors.green}
+                />
+                <Text
+                  style={[styles.featureText, highlight && styles.featureTextNew]}
+                  numberOfLines={1}
+                >
+                  {label}
+                </Text>
+              </View>
+            );
+          })}
+          {shown.length > MAX_FEATURES ? (
+            <Text style={styles.moreText}>+ {shown.length - MAX_FEATURES} more</Text>
+          ) : null}
         </View>
       ) : null}
 
-      {!free ? (
+      {isCurrent ? (
+        // The plan the student is already on — surfaced as a disabled marker,
+        // never a purchase action (mirrors the web dashboard).
+        <Button label="Current plan" variant="secondary" disabled onPress={() => {}} />
+      ) : !free ? (
         <Button
           label={busy ? "Processing…" : ctaLabel}
           onPress={onPress}
@@ -284,6 +329,10 @@ function PlanCard({
   );
 }
 
+// How many plan features to list before collapsing the rest into "+ N more".
+// Matches the web dashboard's cap so the two read the same.
+const MAX_FEATURES = 6;
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 function ctaFor(
   plan: PlanRow,
@@ -292,33 +341,25 @@ function ctaFor(
   currentPrice: number | null,
 ): { label: string; variant: "primary" | "secondary" } {
   if (!current) return { label: "Subscribe", variant: "primary" };
-  if (plan.id === current.plan_id) return { label: "Extend", variant: "secondary" };
+  // The current plan never reaches here — PlanCard renders a disabled marker
+  // for it instead of a purchase CTA.
   if (currentPrice != null && price > currentPrice) return { label: "Upgrade", variant: "primary" };
   if (currentPrice != null && price < currentPrice) return { label: "Downgrade", variant: "secondary" };
   return { label: "Switch", variant: "primary" };
 }
 
 function successMessage(v: VerifyResponse): string {
-  const until = v.expires_at ? prettyDate(v.expires_at) : "";
+  const until = v.expires_at ? mediumDate(v.expires_at) : "";
   switch (v.action) {
     case "extend_active":
       return `${v.plan_name} extended${until ? ` until ${until}` : ""}.`;
     case "schedule_downgrade":
-      return `${v.plan_name} will start${v.starts_at ? ` ${prettyDate(v.starts_at)}` : ""} when your current plan ends.`;
+      return `${v.plan_name} will start${v.starts_at ? ` ${mediumDate(v.starts_at)}` : ""} when the current plan ends.`;
     case "already_processed":
-      return "This payment was already applied to your account.";
+      return "This payment was already applied to this account.";
     default:
       return `${v.plan_name} is now active${until ? ` until ${until}` : ""}.`;
   }
-}
-
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-/** ISO / pg timestamp → "1 Aug 2026". */
-function prettyDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 /** 30 → "month", 90 → "3 months", 365 → "year", else "N days". */
@@ -367,8 +408,11 @@ const styles = StyleSheet.create({
   priceMeta: { ...typography.caption, color: colors.textMuted },
 
   features: { gap: spacing.sm },
+  inheritLine: { ...typography.caption, color: colors.textMuted, marginBottom: 2 },
   featureRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   featureText: { ...typography.label, color: colors.text, flex: 1, fontWeight: "600" },
+  featureTextNew: { color: palette.accent600, fontWeight: "800" },
+  moreText: { ...typography.caption, color: colors.textMuted, marginLeft: 24, marginTop: 2 },
 
   noteRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm, paddingHorizontal: spacing.xs },
   noteText: { ...typography.caption, color: colors.textMuted, flex: 1 },

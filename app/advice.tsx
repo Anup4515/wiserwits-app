@@ -34,7 +34,7 @@ export default function AdviceScreen() {
         />
       }
     >
-      <Button label="Ask a consultant" onPress={() => router.push("/ask-advice")} />
+      <Button label="Ask Consultant" onPress={() => router.push("/ask-advice")} />
 
       <QueryView result={adviceResult} feature="student.advice">
         {(rows) => <AdviceThread rows={rows} />}
@@ -48,7 +48,7 @@ export default function AdviceScreen() {
               <EmptyState
                 icon="chatbox-ellipses-outline"
                 title="No feedback yet"
-                subtitle="Notes your consultant shares about your work will appear here."
+                subtitle="Notes the consultant shares about the work will appear here."
               />
             </Card>
           ) : (
@@ -68,7 +68,7 @@ function AdviceThread({ rows }: { rows: AdviceRow[] }) {
         <EmptyState
           icon="chatbubble-ellipses-outline"
           title="No requests yet"
-          subtitle="Ask your consultant for advice and their replies will show up here as a thread."
+          subtitle="Ask the consultant for advice and their replies will show up here as a thread."
         />
       </Card>
     );

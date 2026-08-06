@@ -80,7 +80,7 @@ function CoursesBody({ data }: { data: CourseListResponse }) {
         }),
       );
       await afterAcquire(course, false);
-      Alert.alert("Enrolled", `You're enrolled in ${course.title}.`);
+      Alert.alert("Enrolled", `Now enrolled in ${course.title}.`);
     } catch (err) {
       Alert.alert("Couldn't enrol", err instanceof Error ? err.message : "Please try again.");
     } finally {
@@ -131,7 +131,7 @@ function CoursesBody({ data }: { data: CourseListResponse }) {
       }
 
       await afterAcquire(course, true);
-      Alert.alert("You're all set", `${course.title} is now in your courses.`);
+      Alert.alert("All set", `${course.title} is now in the course list.`);
     } catch (err) {
       if (err instanceof RazorpayUnavailableError) {
         Alert.alert("Not available here", err.message);

@@ -13,6 +13,15 @@ import { colors, spacing, radius, typography } from "@/theme";
  * feed queries invalidate and we pop back. Shows the computed BMI live so the
  * student sees the reading before saving.
  */
+
+// Plausible human ranges — reject typos like 1000 cm or 500 kg before they
+// ever reach the server or produce a nonsense BMI. Single source of truth for
+// both the submit guard and the live preview.
+const HEIGHT_MIN_CM = 50;
+const HEIGHT_MAX_CM = 250;
+const WEIGHT_MIN_KG = 10;
+const WEIGHT_MAX_KG = 300;
+
 export default function LogBmiScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -24,24 +33,28 @@ export default function LogBmiScreen() {
 
   const h = parseFloat(height);
   const w = parseFloat(weight);
-  const livePreview =
-    Number.isFinite(h) && Number.isFinite(w) && h > 0
-      ? (w / (h / 100) ** 2).toFixed(1)
-      : null;
+  const heightOk = Number.isFinite(h) && h >= HEIGHT_MIN_CM && h <= HEIGHT_MAX_CM;
+  const weightOk = Number.isFinite(w) && w >= WEIGHT_MIN_KG && w <= WEIGHT_MAX_KG;
+  // Only preview a BMI once both inputs are plausible, so a typo like 1000 cm
+  // never flashes a misleading number before the range check runs on Save.
+  const livePreview = heightOk && weightOk ? (w / (h / 100) ** 2).toFixed(1) : null;
 
   const submit = () => {
     setLocalError(null);
-    if (!Number.isFinite(h) || h < 50 || h > 250) {
-      setLocalError("Enter a height between 50 and 250 cm.");
+    if (!heightOk) {
+      setLocalError(`Enter a height between ${HEIGHT_MIN_CM} and ${HEIGHT_MAX_CM} cm.`);
       return;
     }
-    if (!Number.isFinite(w) || w < 10 || w > 300) {
-      setLocalError("Enter a weight between 10 and 300 kg.");
+    if (!weightOk) {
+      setLocalError(`Enter a weight between ${WEIGHT_MIN_KG} and ${WEIGHT_MAX_KG} kg.`);
       return;
     }
     m.mutate(
       { height_cm: h, weight_kg: w },
-      { onSuccess: () => router.back() },
+      // Land on Health after saving (not `router.back()`, which returns to
+      // wherever the tabs were when this was opened via the "+" quick action).
+      // Health shows the just-logged reading as the new latest BMI.
+      { onSuccess: () => router.replace("/(tabs)/health/bmi") },
     );
   };
 
@@ -52,7 +65,7 @@ export default function LogBmiScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <Text style={styles.heading}>Log a BMI reading</Text>
-      <Text style={styles.subheading}>Enter your latest height and weight.</Text>
+      <Text style={styles.subheading}>Enter the latest height and weight.</Text>
 
       <View style={{ height: spacing.lg }} />
 

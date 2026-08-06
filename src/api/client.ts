@@ -91,8 +91,12 @@ async function doFetch<T>(
   opts: RequestOptions,
   accessToken: string | null,
 ): Promise<{ status: number; body: ApiResponse<T> } | { networkError: true }> {
+  // Multipart uploads pass a FormData body: let fetch set the
+  // `multipart/form-data; boundary=…` header itself and send the body verbatim
+  // (never JSON-encoded), otherwise force our JSON content type.
+  const isForm = opts.body instanceof FormData;
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isForm ? {} : { "Content-Type": "application/json" }),
     // Skip ngrok's free-tier browser-warning interstitial so tunneled API
     // responses stay JSON (harmless/ignored when not tunnelling through ngrok).
     "ngrok-skip-browser-warning": "true",
@@ -106,7 +110,12 @@ async function doFetch<T>(
     const res = await fetch(`${env.apiBaseUrl}${path}`, {
       ...opts,
       headers,
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      body:
+        opts.body === undefined
+          ? undefined
+          : isForm
+            ? (opts.body as FormData)
+            : JSON.stringify(opts.body),
     });
     let body: ApiResponse<T>;
     try {
@@ -160,6 +169,9 @@ export const api = {
     apiRequest<T>(path, { ...opts, method: "GET" }),
   post: <T>(path: string, body?: unknown, opts?: RequestOptions) =>
     apiRequest<T>(path, { ...opts, method: "POST", body }),
+  /** Multipart POST for file uploads — the body is a FormData sent as-is. */
+  upload: <T>(path: string, form: FormData, opts?: RequestOptions) =>
+    apiRequest<T>(path, { ...opts, method: "POST", body: form }),
   patch: <T>(path: string, body?: unknown, opts?: RequestOptions) =>
     apiRequest<T>(path, { ...opts, method: "PATCH", body }),
   delete: <T>(path: string, opts?: RequestOptions) =>

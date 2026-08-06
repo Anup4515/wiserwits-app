@@ -28,6 +28,9 @@ interface Action {
   href: Href;
   /** Plan feature this action needs; omit for always-allowed/ungated actions. */
   feature?: string;
+  /** Only for independent students — hidden when the student has an active
+   * enrollment (their records come from the school, not contributors). */
+  selfOnly?: boolean;
 }
 
 const ACTIONS: Action[] = [
@@ -43,8 +46,8 @@ const ACTIONS: Action[] = [
     icon: "chatbubble-ellipses-outline",
     tint: palette.accent100,
     fg: palette.accent600,
-    label: "Ask a consultant",
-    subtitle: "Send a question to your consultant",
+    label: "Ask Consultant",
+    subtitle: "Send a question to the consultant",
     href: "/ask-advice",
     feature: FEATURE.advice,
   },
@@ -52,7 +55,7 @@ const ACTIONS: Action[] = [
     icon: "medkit-outline",
     tint: colors.blueBg,
     fg: colors.blue,
-    label: "Book a consultation",
+    label: "Schedule Consultation",
     subtitle: "Schedule a doctor consultation",
     href: "/book-consultation",
     feature: FEATURE.health,
@@ -71,8 +74,9 @@ const ACTIONS: Action[] = [
     tint: colors.amberBg,
     fg: colors.amber,
     label: "Invite a contributor",
-    subtitle: "Let a parent or tutor fill your data",
+    subtitle: "Let a parent or tutor help fill in data",
     href: "/invite-contributor",
+    selfOnly: true,
   },
 ];
 
@@ -91,7 +95,7 @@ export default function QuickActionsScreen() {
 
       <View style={{ height: spacing.md }} />
 
-      {ACTIONS.map((a) => {
+      {ACTIONS.filter((a) => !(a.selfOnly && user?.enrollment_id != null)).map((a) => {
         const locked = a.feature ? isFeatureLocked(user, a.feature) : false;
         return (
           <Pressable

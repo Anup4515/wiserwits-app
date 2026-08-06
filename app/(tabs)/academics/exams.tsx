@@ -7,7 +7,7 @@ import { FEATURE } from "@/lib/features";
 import { Card, Pill } from "@/components/ui";
 import { QueryView } from "@/components/QueryView";
 import { EmptyState } from "@/components/data-ui";
-import { shortDate } from "@/lib/format";
+import { dateRange } from "@/lib/format";
 import { colors, palette, spacing, radius, typography, shadow } from "@/theme";
 import type { ExamRow } from "@/api/student-types";
 
@@ -54,15 +54,12 @@ export default function ExamsScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.name}>{exam.name}</Text>
-                    <Text style={styles.meta}>
-                      {[
-                        exam.code,
-                        `${exam.subject_count} subject${exam.subject_count === 1 ? "" : "s"}`,
-                        exam.start_date ? shortDate(exam.start_date) : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
+                    <Text style={styles.nameCount}>
+                      {`${exam.subject_count} subject${exam.subject_count === 1 ? "" : "s"}`}
                     </Text>
+                    {dateRange(exam.start_date, exam.end_date) ? (
+                      <Text style={styles.meta}>{dateRange(exam.start_date, exam.end_date)}</Text>
+                    ) : null}
                   </View>
                   <StatusPill status={exam.status} />
                   <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -78,9 +75,9 @@ export default function ExamsScreen() {
 
 function StatusPill({ status }: { status: string }) {
   const s = status?.toLowerCase();
-  if (s === "in_progress") return <Pill label="In progress" tone="amber" />;
+  if (s === "in_progress") return <Pill label="Ongoing" tone="amber" />;
   if (s === "upcoming") return <Pill label="Upcoming" tone="blue" />;
-  if (s === "completed") return <Pill label="Done" tone="green" />;
+  if (s === "completed") return <Pill label="Completed" tone="green" />;
   return null;
 }
 
@@ -101,6 +98,7 @@ const styles = StyleSheet.create({
     width: 42, height: 42, borderRadius: radius.md, backgroundColor: palette.primary50,
     alignItems: "center", justifyContent: "center",
   },
-  name: { ...typography.h2, fontSize: 14.5, color: colors.ink },
+  name: { ...typography.h2, fontSize: 17, color: colors.ink },
+  nameCount: { ...typography.caption, fontWeight: "500", color: colors.textMuted, marginTop: 2 },
   meta: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
 });

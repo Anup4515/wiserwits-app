@@ -12,6 +12,78 @@
 // ── Source ──────────────────────────────────────────────────────────────────
 export type Source = "enrolled" | "self";
 
+// ── Enrollments (/enrollments) ───────────────────────────────────────────────
+// One row per class/section a student belongs to (current + past, across
+// schools if transferred). Drives the class switcher so an enrolled student can
+// browse each enrolled class's academic data. `is_current` arrives as 0 | 1 —
+// use a truthy check. Mirrors the backend's EnrollmentRow verbatim.
+export interface EnrollmentRow {
+  enrollment_id: number;
+  class_section_id: number;
+  session_id: number;
+  session_name: string;
+  session_start_date: string;
+  session_end_date: string;
+  class_name: string;
+  section_name: string;
+  partner_id: number;
+  partner_name: string | null;
+  is_current: boolean;
+  status: string;
+  enrollment_date: string | null;
+  roll_number: number | null;
+}
+
+// ── Profile (/profile) ───────────────────────────────────────────────────────
+// Full student record shown on the profile-details screen (opened from the
+// home header avatar). Mirrors the dashboard's profile page: personal, contact,
+// guardian, health and (for enrolled students) enrollment/consultant fields.
+// Loads for INDEPENDENT students too — the backend uses `getStudentIdentity`,
+// not context, so no active enrollment is required. `enrollment` is null for
+// self-tracked students; the screen hides the academic card then.
+export interface StudentProfile {
+  id: number;
+  first_name: string;
+  last_name: string;
+  middle_name: string | null;
+  gender: string | null;
+  date_of_birth: string | null;
+  email: string | null;
+  phone: string | null;
+  alternate_phone: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  postal_code: string | null;
+  father_name: string | null;
+  mother_name: string | null;
+  guardian_name: string | null;
+  guardian_phone: string | null;
+  guardian_email: string | null;
+  profile_image: string | null;
+  status: string | null;
+  height: string | null;
+  weight: string | null;
+  blood_group: string | null;
+  grade_level: number | null;
+  consultant_name: string | null;
+  consultant_email: string | null;
+}
+
+export interface ProfileEnrollment {
+  school_name: string | null;
+  class_name: string;
+  section_name: string;
+  roll_number: string | null;
+  session_name: string;
+}
+
+export interface ProfileData {
+  student: StudentProfile;
+  enrollment: ProfileEnrollment | null;
+}
+
 // ── Dashboard (/dashboard) ──────────────────────────────────────────────────
 export interface DashboardData {
   student: {
@@ -48,6 +120,8 @@ export interface DashboardSchool {
     obtained_marks: string; maximum_marks: string; percentage: string; grade: string | null;
   }[];
   holistic_avg: { parameter_name: string; average_pct: number; rated_count: number }[];
+  // Overall holistic average for the most recent rated month (normalised 0–100).
+  holistic_month: { avg_pct: number | null; month: string | null; rated_count: number };
 }
 
 export interface DashboardSelf {
@@ -78,6 +152,12 @@ export interface DashboardPersonal {
   recent_consultations: {
     id: number; scheduled_at: string; status: string | null; doctor_name: string | null;
   }[];
+  // Learning — most recent enrolled courses (for a "Continue learning" card).
+  enrolled_courses: { id: number; title: string; slug: string }[];
+  // Learning — the single nearest upcoming live class, or null.
+  next_live_class: { id: number; title: string; start_time: string; join_link: string | null } | null;
+  // Health — the single nearest upcoming appointment/test reminder, or null.
+  next_reminder: { id: number; title: string; appointment_date: string } | null;
 }
 
 // ── Insights (/insights — NEW in Phase 2) ───────────────────────────────────
@@ -94,9 +174,24 @@ export interface InsightsData {
     average_pct: number | null;
     dimensions: { name: string; pct: number }[];
   };
-  strengths: { subject: string; percentage: number }[];
-  focus: { subject: string; percentage: number }[];
+  // Every subject with its overall %, best-first — rendered as colour-coded
+  // bars (no strengths/focus split, which mislabels strong subjects).
+  subjects: { subject: string; percentage: number }[];
   insight_of_the_day: { title: string; body: string; tone: "positive" | "warning" | "neutral" };
+  // Wellness read — BMI + a short trend + consult/diet/lab counts.
+  wellness: {
+    latest_bmi: { bmi: number; record_date: string } | null;
+    bmi_trend: { date: string; bmi: number }[];
+    consultations_count: number;
+    diet_plans_count: number;
+    lab_reports_count: number;
+  };
+  // Learning read — courses/certificates counts + next live class.
+  learning: {
+    courses_enrolled: number;
+    certificates: number;
+    next_live_class: { id: number; title: string; start_time: string } | null;
+  };
 }
 
 // ── Attendance (/attendance, /self/attendance) ──────────────────────────────
@@ -417,6 +512,30 @@ export interface CourseVerifyResponse {
   already_processed: boolean;
 }
 
+// ── Course reviews (/courses/[slug]/reviews) ─────────────────────────────────
+// One review per (student, course). `rating` is 1–5. `my_review` is the
+// signed-in student's own row (null until they submit); `recent` is the latest
+// reviews (name masked to first name + last initial). Only enrolled students
+// may post — `is_enrolled` gates the form.
+export interface CourseReviewRow {
+  id: number;
+  rating: number;
+  feedback: string | null;
+  updated_at: string;
+  student_name: string;
+}
+export interface MyCourseReview {
+  rating: number;
+  feedback: string | null;
+  updated_at: string;
+}
+export interface CourseReviewsData {
+  is_enrolled: boolean;
+  summary: { avg_rating: number | null; count: number };
+  my_review: MyCourseReview | null;
+  recent: CourseReviewRow[];
+}
+
 // ── Content screens (Phase 4.7) ─────────────────────────────────────────────
 export interface CertificateRow {
   id: number;
@@ -469,4 +588,31 @@ export interface ReminderRow {
   description: string | null;
   appointment_date: string;    // DATE as STRING
   created_at: string;
+}
+
+// ── Holistic (/holistic, /self/holistic) ─────────────────────────────────────
+// Monthly holistic development. Enrolled returns parameter groups, each with
+// its sub-parameters (rating out of max_rating, optional grade + comment).
+// Self returns a flat list of dimension rows (rating 0–10 + reflection, filled
+// by a contributor). Both are month-scoped via ?month=YYYY-MM.
+export interface HolisticSubParam {
+  name: string;
+  rating_value: number | null;
+  max_rating: number | null;
+  rating_grade: string | null;
+  comments: string | null;
+}
+export interface HolisticParamGroup {
+  parameter_name: string;
+  stage: string;
+  sub_parameters: HolisticSubParam[];
+}
+export interface SelfHolisticRow {
+  id: number;
+  period_month: string;         // "YYYY-MM-DD"
+  dimension: string;
+  rating: number;               // 0–10
+  reflection: string | null;
+  filled_by_user_id: number | null;
+  filled_by_name: string | null;
 }

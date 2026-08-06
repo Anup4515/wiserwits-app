@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, RefreshControl } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, Redirect } from "expo-router";
 
 import { useContributors, useRevokeContributor } from "@/api/hooks";
 import { useAuth } from "@/auth/AuthContext";
@@ -25,6 +25,12 @@ export default function ContributorsScreen() {
   const { query } = result;
   const revoke = useRevokeContributor();
 
+  // Contributors are an independent-student feature. An enrolled student's data
+  // comes from the school (partner portal), so this screen isn't for them —
+  // bounce back if it's reached directly (there are no links to it when
+  // enrolled).
+  if (enrolled) return <Redirect href="/(tabs)" />;
+
   return (
     <ScrollView
       style={styles.root}
@@ -33,20 +39,10 @@ export default function ContributorsScreen() {
         <RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} />
       }
     >
-      {enrolled ? (
-        <Card style={styles.infoCard}>
-          <Text style={styles.infoTitle}>Contributors aren't needed</Text>
-          <Text style={styles.infoBody}>
-            Your school posts your records directly, so you don't have to invite
-            anyone to fill them in for you.
-          </Text>
-        </Card>
-      ) : (
-        <Button
-          label="Invite a contributor"
-          onPress={() => router.push("/invite-contributor")}
-        />
-      )}
+      <Button
+        label="Invite a contributor"
+        onPress={() => router.push("/invite-contributor")}
+      />
 
       <QueryView result={result}>
         {(grants) =>
@@ -55,7 +51,7 @@ export default function ContributorsScreen() {
               <EmptyState
                 icon="people-outline"
                 title="No contributors yet"
-                subtitle="Invite a parent, tutor or mentor to help keep your self-tracked data up to date."
+                subtitle="Invite a parent, tutor or mentor to help keep self-tracked data up to date."
               />
             </Card>
           ) : (
@@ -148,9 +144,6 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   pad: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
 
-  infoCard: { gap: spacing.xs },
-  infoTitle: { ...typography.h2, color: colors.ink },
-  infoBody: { ...typography.body, color: colors.textMuted },
 
   head: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   title: { ...typography.h2, fontSize: 15, color: colors.ink, flex: 1 },

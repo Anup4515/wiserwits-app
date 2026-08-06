@@ -13,7 +13,7 @@ import type { AssignmentRow } from "@/api/student-types";
  * Assignments (mock 9, Phase 3). One `/assignments` call returns the student's
  * work active-first; each row shows its status, deadline and (once graded) marks,
  * with a one-tap "Mark as submitted" action and an optional link-out. We split the
- * list into "To do" vs "Done" so the student sees what still needs action up top.
+ * list into "To do" vs "Completed" so the student sees what still needs action up top.
  */
 type PillState = { tone: "amber" | "blue" | "green" | "red"; label: string };
 
@@ -64,7 +64,7 @@ export default function AssignmentsScreen() {
                 <EmptyState
                   icon="clipboard-outline"
                   title="No assignments"
-                  subtitle="Assignments shared by your consultant will show up here as they're added."
+                  subtitle="Assignments shared by the consultant will show up here as they're added."
                 />
               </Card>
             );
@@ -86,7 +86,7 @@ export default function AssignmentsScreen() {
 
               {done.length > 0 ? (
                 <View style={styles.section}>
-                  <SectionHeader title="Done" />
+                  <SectionHeader title="Completed" />
                   {done.map((a) => (
                     <AssignmentCard key={a.id} a={a} submit={submit} />
                   ))}

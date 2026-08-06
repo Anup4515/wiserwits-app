@@ -1,14 +1,14 @@
-import { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAttendance } from "@/api/hooks";
+import { useBoundedMonth } from "@/features/enrollment/useSessionMonths";
 import { FEATURE } from "@/lib/features";
 import { Card } from "@/components/ui";
 import { QueryView } from "@/components/QueryView";
 import { MonthStepper, SectionHeader, EmptyState, ProvenanceBadge } from "@/components/data-ui";
 import { Donut } from "@/components/charts";
-import { longMonth, currentMonth, addMonths, longDate, statusColor, statusLabel } from "@/lib/format";
+import { longMonth, longDate, statusColor, statusLabel } from "@/lib/format";
 import { colors, spacing, radius, typography } from "@/theme";
 import type { AttendanceData } from "@/api/student-types";
 
@@ -18,10 +18,13 @@ import type { AttendanceData } from "@/api/student-types";
  * self reads present/absent only (the donut collapses accordingly).
  */
 export default function AttendanceScreen() {
-  const [month, setMonth] = useState(currentMonth());
+  // Month clamped to the selected class's academic session (and never past
+  // today — attendance can't have future records).
+  const { month, setPrev, setNext, prevDisabled, nextDisabled } = useBoundedMonth({
+    capToday: true,
+  });
   const result = useAttendance(month);
   const { query } = result;
-  const thisMonth = currentMonth();
 
   return (
     <ScrollView
@@ -32,9 +35,10 @@ export default function AttendanceScreen() {
     >
       <MonthStepper
         label={longMonth(month)}
-        onPrev={() => setMonth((m) => addMonths(m, -1))}
-        onNext={() => setMonth((m) => addMonths(m, 1))}
-        nextDisabled={month >= thisMonth}
+        onPrev={setPrev}
+        onNext={setNext}
+        prevDisabled={prevDisabled}
+        nextDisabled={nextDisabled}
       />
 
       <QueryView result={result} feature={FEATURE.attendance}>

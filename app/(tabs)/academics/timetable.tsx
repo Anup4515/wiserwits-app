@@ -81,7 +81,10 @@ function EnrolledDay({ data, dayValue }: { data: TimetableData; dayValue: number
     <Card style={{ paddingVertical: spacing.xs }}>
       {data.periods.map((p, i) => {
         const slot = slotByPeriod.get(p.period_number);
-        const isBreak = p.slot_type !== "period";
+        // A class period carries subject/teacher; break/lunch/assembly are
+        // non-teaching rows. The config's teaching value is "class" (not
+        // "period"), so anything other than "class" renders as a break label.
+        const isBreak = p.slot_type !== "class";
         return (
           <View key={p.period_number} style={[styles.slotRow, i > 0 && styles.divider]}>
             <View style={styles.timeCol}>

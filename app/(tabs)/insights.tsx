@@ -4,12 +4,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useInsights } from "@/api/hooks";
-import { Card } from "@/components/ui";
+import { Card, Pill } from "@/components/ui";
 import { QueryView } from "@/components/QueryView";
-import { SourceBadge, SectionHeader, EmptyState } from "@/components/data-ui";
+import { SourceBadge, SectionHeader, EmptyState, StatTile } from "@/components/data-ui";
 import { ProgressRing, TrendChart, BarRow } from "@/components/charts";
+import { bmiCategory } from "@/features/health/sections";
 import { shortMonth, longMonth, scoreColor } from "@/lib/format";
-import { gradients, colors, spacing, radius, typography } from "@/theme";
+import { gradients, colors, palette, spacing, radius, typography } from "@/theme";
 import type { InsightsData } from "@/api/student-types";
 
 /**
@@ -93,7 +94,7 @@ function InsightsBody({ data, source }: { data: InsightsData; source: "enrolled"
             color={scoreColor(data.attendance.percentage)}
             centerSub={`${data.attendance.present}/${data.attendance.total} days`}
           />
-          <Text style={styles.ringFoot}>overall present</Text>
+          <Text style={styles.ringFoot}>{source === "enrolled" ? "This session" : "Overall"}</Text>
         </Card>
       </View>
 
@@ -103,10 +104,14 @@ function InsightsBody({ data, source }: { data: InsightsData; source: "enrolled"
         {data.attendance.trend.length === 0 ? (
           <Text style={styles.muted}>No attendance history yet.</Text>
         ) : (
-          <TrendChart
-            points={data.attendance.trend.map((p) => ({ label: shortMonth(p.month), value: p.percentage }))}
-            color={colors.navy}
-          />
+          <>
+            <Text style={styles.subtle}>Monthly · {trendRange(data.attendance.trend)}</Text>
+            <View style={{ height: spacing.sm }} />
+            <TrendChart
+              points={data.attendance.trend.map((p) => ({ label: shortMonth(p.month), value: p.percentage }))}
+              color={colors.navy}
+            />
+          </>
         )}
       </Card>
 
@@ -124,31 +129,39 @@ function InsightsBody({ data, source }: { data: InsightsData; source: "enrolled"
         </Card>
       ) : null}
 
-      {/* Strengths & focus */}
-      {data.strengths.length > 0 || data.focus.length > 0 ? (
-        <Card style={{ gap: spacing.lg }}>
-          {data.strengths.length > 0 ? (
-            <View>
-              <Text style={styles.chipsHead}>💪 Strengths</Text>
-              <View style={styles.chips}>
-                {data.strengths.map((s) => (
-                  <SubjectChip key={s.subject} subject={s.subject} pct={s.percentage} />
-                ))}
-              </View>
-            </View>
-          ) : null}
-          {data.focus.length > 0 ? (
-            <View>
-              <Text style={styles.chipsHead}>🎯 Focus areas</Text>
-              <View style={styles.chips}>
-                {data.focus.map((s) => (
-                  <SubjectChip key={s.subject} subject={s.subject} pct={s.percentage} />
-                ))}
-              </View>
+      {/* Subject performance — every subject as a colour-coded bar. Green =
+          strong, red = needs work; the colour tells the story, so there's no
+          arbitrary strengths/focus split. A "needs attention" line calls out
+          only subjects genuinely below par. */}
+      {data.subjects.length > 0 ? (
+        <Card>
+          <SectionHeader title="Subject performance" />
+          <View style={{ height: spacing.sm }} />
+          {data.subjects.map((s) => (
+            <BarRow
+              key={s.subject}
+              label={s.subject}
+              value={s.percentage}
+              valueLabel={`${s.percentage}%`}
+              color={scoreColor(s.percentage)}
+            />
+          ))}
+          {needsAttention(data.subjects).length > 0 ? (
+            <View style={styles.attentionRow}>
+              <Ionicons name="alert-circle-outline" size={15} color={colors.amber} />
+              <Text style={styles.attentionText}>
+                Needs attention: {needsAttention(data.subjects).map((s) => s.subject).join(", ")}
+              </Text>
             </View>
           ) : null}
         </Card>
       ) : null}
+
+      {/* Wellness — BMI + trend + consult/diet/lab counts (guarded for older API) */}
+      {data.wellness ? <WellnessCard data={data.wellness} /> : null}
+
+      {/* Learning — courses, certificates, next live class (guarded for older API) */}
+      {data.learning ? <LearningCard data={data.learning} /> : null}
 
       {data.overall.exams_counted === 0 && data.attendance.total === 0 ? (
         <Card>
@@ -163,13 +176,98 @@ function InsightsBody({ data, source }: { data: InsightsData; source: "enrolled"
   );
 }
 
-function SubjectChip({ subject, pct }: { subject: string; pct: number }) {
+// ── Wellness ─────────────────────────────────────────────────────────────────
+function WellnessCard({ data }: { data: InsightsData["wellness"] }) {
+  const bmi = data.latest_bmi;
+  const cat = bmi ? bmiCategory(bmi.bmi) : null;
+  const hasCounts = data.consultations_count + data.diet_plans_count + data.lab_reports_count > 0;
+  if (!bmi && !hasCounts) return null;
+
   return (
-    <View style={styles.subjectChip}>
-      <Text style={styles.subjectChipName}>{subject}</Text>
-      <Text style={[styles.subjectChipPct, { color: scoreColor(pct) }]}>{pct}%</Text>
-    </View>
+    <Card style={{ gap: spacing.sm }}>
+      <SectionHeader title="Wellness" />
+      {bmi ? (
+        <>
+          <View style={styles.rowBetween}>
+            <View>
+              <Text style={styles.bmiBig}>{bmi.bmi.toFixed(1)}</Text>
+              <Text style={styles.subtle}>Latest BMI</Text>
+            </View>
+            {cat ? <Pill label={cat.label} tone={cat.tone} /> : null}
+          </View>
+          {data.bmi_trend.length > 1 ? (
+            <TrendChart
+              points={data.bmi_trend.map((p) => ({ label: shortMonth(p.date.slice(0, 7)), value: p.bmi }))}
+              color={colors.navy}
+              domain="auto"
+              formatValue={(v) => v.toFixed(1)}
+            />
+          ) : null}
+        </>
+      ) : (
+        <Text style={styles.muted}>No BMI readings yet.</Text>
+      )}
+      <View style={styles.tileRow}>
+        <StatTile label="Consultations" value={String(data.consultations_count)} icon="medkit-outline" tint={colors.greenBg} fg={colors.green} />
+        <StatTile label="Diet plans" value={String(data.diet_plans_count)} icon="nutrition-outline" tint={palette.accent100} fg={palette.accent600} />
+        <StatTile label="Lab reports" value={String(data.lab_reports_count)} icon="flask-outline" tint={colors.amberBg} fg={colors.amber} />
+      </View>
+    </Card>
   );
+}
+
+// ── Learning ─────────────────────────────────────────────────────────────────
+function LearningCard({ data }: { data: InsightsData["learning"] }) {
+  const live = data.next_live_class;
+  if (data.courses_enrolled === 0 && data.certificates === 0 && !live) return null;
+
+  return (
+    <Card style={{ gap: spacing.sm }}>
+      <SectionHeader title="Learning" />
+      <View style={styles.tileRow}>
+        <StatTile label="Courses" value={String(data.courses_enrolled)} icon="school-outline" tint={colors.blueBg} fg={colors.blue} />
+        <StatTile label="Certificates" value={String(data.certificates)} icon="ribbon-outline" tint={palette.accent100} fg={palette.accent600} />
+      </View>
+      {live ? (
+        <View style={styles.liveRow}>
+          <Ionicons name="videocam-outline" size={15} color={colors.red} />
+          <Text style={styles.liveText} numberOfLines={1}>
+            Next live class: {live.title} · {shortMonth(live.start_time.slice(0, 7))} {live.start_time.slice(8, 10)}
+          </Text>
+        </View>
+      ) : null}
+    </Card>
+  );
+}
+
+/** "Jul 2026" — month + year for a "YYYY-MM" string. */
+function monthYear(ym: string): string {
+  return `${shortMonth(ym)} ${ym.slice(0, 4)}`;
+}
+
+// Subjects genuinely below par (absolute cutoff, not a rank) — so a class of
+// all-90s flags nothing, and a real weak subject is called out.
+const ATTENTION_BELOW = 50;
+function needsAttention(subjects: { subject: string; percentage: number }[]) {
+  return subjects.filter((s) => s.percentage < ATTENTION_BELOW);
+}
+
+/**
+ * The span the trend covers, e.g. "Feb – Jul 2026" (or a single "Jul 2026").
+ * Points already carry a per-month x-axis label; this states the whole range so
+ * a student knows the chart is monthly and where it starts/ends.
+ */
+function trendRange(trend: { month: string; percentage: number }[]): string {
+  if (trend.length === 0) return "";
+  const first = trend[0].month;
+  const last = trend[trend.length - 1].month;
+  if (first === last) return monthYear(first);
+  // Show the year on both ends when the span crosses a calendar year (a
+  // session can, e.g. Mar 2026 – Feb 2027); otherwise the year once at the end.
+  const crossesYear = first.slice(0, 4) !== last.slice(0, 4);
+  return crossesYear
+    ? `${monthYear(first)} – ${monthYear(last)}`
+    : `${shortMonth(first)} – ${monthYear(last)}`;
 }
 
 const styles = StyleSheet.create({
@@ -196,18 +294,24 @@ const styles = StyleSheet.create({
   insightTitle: { ...typography.h2, color: colors.ink },
   insightBody: { ...typography.body, color: colors.text },
 
+  bmiBig: { fontSize: 30, fontWeight: "800", color: colors.ink, letterSpacing: -0.5 },
+  tileRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.xs },
+  liveRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: spacing.xs },
+  liveText: { ...typography.caption, color: colors.text, flex: 1 },
+
   ringRow: { flexDirection: "row", gap: spacing.md },
   ringCard: { flex: 1, alignItems: "center", gap: spacing.sm },
   ringCap: { ...typography.label, color: colors.textMuted, alignSelf: "flex-start" },
   ringFoot: { ...typography.caption, color: colors.textMuted },
 
-  chipsHead: { ...typography.label, color: colors.text, marginBottom: spacing.sm },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  subjectChip: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 7,
+  attentionRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
-  subjectChipName: { ...typography.label, color: colors.text },
-  subjectChipPct: { ...typography.label, fontWeight: "800" },
+  attentionText: { ...typography.caption, color: colors.textMuted, flex: 1 },
 });

@@ -54,7 +54,7 @@ export const copy = {
   "attendance.title": ({ name }: CopyParams) =>
     name ? `${name}'s attendance` : "Attendance",
   "advice.cta": ({ name }: CopyParams) =>
-    name ? `Ask a consultant about ${name}` : "Ask a consultant",
+    name ? `Ask Consultant about ${name}` : "Ask Consultant",
 
   // example of an OPTIONAL role variant (neutral still ships by default)
   "insight.attendanceDip": {

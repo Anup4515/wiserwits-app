@@ -1,13 +1,13 @@
-import { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Linking, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useCalendar } from "@/api/hooks";
+import { useBoundedMonth } from "@/features/enrollment/useSessionMonths";
 import { FEATURE } from "@/lib/features";
 import { Card, Pill } from "@/components/ui";
 import { QueryView } from "@/components/QueryView";
 import { MonthStepper, SectionHeader, EmptyState } from "@/components/data-ui";
-import { longMonth, currentMonth, addMonths, shortDate, time12 } from "@/lib/format";
+import { longMonth, shortDate, time12 } from "@/lib/format";
 import { colors, palette, spacing, radius, typography } from "@/theme";
 import type {
   CalendarData,
@@ -23,7 +23,9 @@ import type {
  * share the workshop / live-class sections.
  */
 export default function CalendarScreen() {
-  const [month, setMonth] = useState(currentMonth());
+  // Month clamped to the selected class's academic session (start … end),
+  // so stepping stays within that academic year's own months.
+  const { month, setPrev, setNext, prevDisabled, nextDisabled } = useBoundedMonth();
   const result = useCalendar(month);
   const { query } = result;
 
@@ -36,8 +38,10 @@ export default function CalendarScreen() {
     >
       <MonthStepper
         label={longMonth(month)}
-        onPrev={() => setMonth((m) => addMonths(m, -1))}
-        onNext={() => setMonth((m) => addMonths(m, 1))}
+        onPrev={setPrev}
+        onNext={setNext}
+        prevDisabled={prevDisabled}
+        nextDisabled={nextDisabled}
       />
 
       <QueryView result={result} feature={FEATURE.calendar}>
@@ -96,7 +100,7 @@ function SelfCalendar({ data }: { data: SelfCalendarData }) {
         <View style={styles.infoRow}>
           <Ionicons name="information-circle-outline" size={18} color={colors.blue} />
           <Text style={styles.infoText}>
-            Your weekly classes are on the Timetable screen. This month's workshops and
+            Weekly classes are on the Timetable screen. This month's workshops and
             live classes show below.
           </Text>
         </View>

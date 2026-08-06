@@ -26,7 +26,7 @@ export default function FeedbackScreen() {
             <EmptyState
               icon="chatbubble-ellipses-outline"
               title="No feedback yet"
-              subtitle="Feedback your consultant shares about your work will appear here."
+              subtitle="Feedback the consultant shares about the work will appear here."
             />
           ) : (
             <View style={{ gap: spacing.md }}>

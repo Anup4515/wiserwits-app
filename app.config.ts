@@ -55,6 +55,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     "expo-router",
     "expo-secure-store",
+    "expo-sharing",
+    "@react-native-community/datetimepicker",
+    [
+      "expo-image-picker",
+      {
+        photosPermission:
+          "Allow WiserWits to access your photos to set a profile picture.",
+      },
+    ],
     [
       "expo-splash-screen",
       {

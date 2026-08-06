@@ -13,8 +13,10 @@ import { track } from "@/lib/analytics";
 import type { SessionUser } from "@/api/types";
 import {
   addSession,
+  canAddAccount,
   clearAll,
   getAccounts,
+  MAX_ACCOUNTS,
   getActiveSession,
   getActiveStudentId,
   getSessionFor,
@@ -89,6 +91,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await authApi.login(email, password);
       if (res.error || !res.accessToken || !res.refreshToken || !res.user) {
         return { ok: false, error: res.error ?? "Login failed" };
+      }
+      // Per-device account cap. Re-authenticating an account already on this
+      // device is always allowed (it's a token refresh, not a new slot); a new
+      // account is refused once the device already holds MAX_ACCOUNTS.
+      if (!(await canAddAccount(res.user.student_id))) {
+        return {
+          ok: false,
+          error: `You can keep up to ${MAX_ACCOUNTS} accounts on one device. Remove one to add another.`,
+        };
       }
       await addSession(res.user, {
         accessToken: res.accessToken,
