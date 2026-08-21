@@ -180,8 +180,14 @@ export function Avatar({ name, size = 40 }: { name: string; size?: number }) {
   );
 }
 
-type PillTone = "green" | "amber" | "red" | "blue" | "navy" | "gold";
-const pillTones: Record<PillTone, { bg: string; fg: string }> = {
+export type PillTone = "green" | "amber" | "red" | "blue" | "navy" | "gold";
+
+/**
+ * Soft background + readable foreground per tone. Exported because the same
+ * pairing is used for icon tiles and accent blocks elsewhere — one table keeps
+ * a "green" pill and a "green" icon the same green.
+ */
+export const pillTones: Record<PillTone, { bg: string; fg: string }> = {
   green: { bg: colors.greenBg, fg: "#15803d" },
   amber: { bg: colors.amberBg, fg: "#b45309" },
   red: { bg: colors.redBg, fg: "#b91c1c" },

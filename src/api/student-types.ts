@@ -319,29 +319,15 @@ export interface CalendarLiveClass {
   join_link: string | null; status: string; recording_url: string | null;
 }
 
-// ── Holistic: enrolled (/holistic) ──────────────────────────────────────────
-export interface HolisticGroup {
-  parameter_name: string;
-  stage: string;
-  sub_parameters: {
-    name: string; rating_value: number | null; max_rating: number | null;
-    rating_grade: string | null; comments: string | null;
-  }[];
-}
-
-// ── Holistic: self (/self/holistic) — flat rows ─────────────────────────────
-export interface SelfHolisticRow {
-  id: number; period_month: string; dimension: string; rating: number;
-  reflection: string | null; filled_by_user_id: number | null; filled_by_name: string | null;
-}
-
 // ── Activity feed (/feed — NEW in Phase 3) ──────────────────────────────────
 export type FeedCategory =
   | "assignment" | "advice" | "feedback" | "consultation"
-  | "diet" | "lab" | "report" | "marks" | "attendance";
+  | "diet" | "lab" | "report" | "marks" | "attendance"
+  | "reminder" | "holistic" | "timetable" | "calendar"
+  | "live_class" | "workshop" | "certificate";
 
 export interface FeedItem {
-  id: string;             // stable across categories, e.g. "assignment:123"
+  id: string;             // stable across categories, e.g. "event:123"
   category: FeedCategory;
   title: string;
   body: string | null;
@@ -352,7 +338,6 @@ export interface FeedItem {
 export interface FeedData {
   items: FeedItem[];
   nextCursor: string | null;
-  lastReadAt: string;
 }
 
 // ── Health & wellness (/health + sub-routes — Phase 3) ──────────────────────
@@ -360,6 +345,27 @@ export interface FeedData {
 export interface BmiRecord {
   id: number; height: number; weight: number; bmi: number;
   record_date: string; created_at: string;
+}
+
+/**
+ * A row as `/api/student/bmi` returns it — raw column names, and DECIMALs as
+ * strings (pg's DECIMAL parser is left alone server-side to keep precision).
+ * `/health` aliases and casts these; `toBmiRecord()` normalises this shape to
+ * the `BmiRecord` the UI uses.
+ */
+export interface BmiHistoryRow {
+  id: number;
+  height_cm: string | number;
+  weight_kg: string | number;
+  bmi: string | number;
+  record_date: string;
+  created_at: string;
+}
+
+/** One cursor page of BMI history; `nextCursor` is null once exhausted. */
+export interface BmiHistoryPage {
+  items: BmiHistoryRow[];
+  nextCursor: string | null;
 }
 export interface HealthData {
   bmi_records: BmiRecord[];
@@ -469,8 +475,11 @@ export interface CourseCardRow {
   is_enrolled: boolean;
 }
 export interface CourseListResponse {
+  /** Not paginated — bounded by what this student has bought. */
   enrolled: CourseCardRow[];
+  /** Paginated; append across pages. */
   catalog: CourseCardRow[];
+  nextCursor: string | null;
 }
 export interface CourseEnrolResponse {
   enrolled: true;
@@ -615,4 +624,14 @@ export interface SelfHolisticRow {
   reflection: string | null;
   filled_by_user_id: number | null;
   filled_by_name: string | null;
+}
+
+/**
+ * Generic page wrapper for the offset-paginated list endpoints. `nextCursor` is
+ * the opaque next-page token (a page number today) — hand it straight back as
+ * `?page=`; null once the list is exhausted.
+ */
+export interface Paged<T> {
+  items: T[];
+  nextCursor: string | null;
 }

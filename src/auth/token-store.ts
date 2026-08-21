@@ -22,6 +22,40 @@ import type { ViewerRole } from "@/lib/copy";
 const INDEX_KEY = "ww.accounts";
 const sessionKey = (studentId: number) => `ww.session.${studentId}`;
 
+// ─── Change notification ────────────────────────────────────────────────────
+
+type Listener = () => void;
+const listeners = new Set<Listener>();
+
+/**
+ * Subscribe to auth-state changes in the store. Returns an unsubscribe fn.
+ *
+ * This exists because the store can change WITHOUT any user action: when a
+ * refresh token is rejected, `api/client.ts` drops the account here directly.
+ * Nothing was watching, so React state kept reporting "authenticated" against
+ * tokens that no longer existed and the user sat on screens that only errored.
+ * `AuthContext` subscribes and re-reads, so an expired session signs out on its
+ * own.
+ */
+export function subscribeToSessionChanges(listener: Listener): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+/**
+ * Fire after any write that changes WHO is signed in — added, switched,
+ * removed, cleared, or a refreshed user payload.
+ *
+ * Deliberately NOT fired by `updateTokens()`: token rotation happens on every
+ * refresh and changes no identity, so notifying there would reload the whole
+ * auth context on a routine 401 retry.
+ */
+function notifySessionChanged(): void {
+  for (const listener of listeners) listener();
+}
+
 /** Max distinct accounts one device may hold at once (plan §5a guardrail). */
 export const MAX_ACCOUNTS = 4;
 
@@ -133,6 +167,7 @@ export async function addSession(
     activeStudentId: user.student_id,
     accounts: [...without, { studentId: user.student_id, name: user.name }],
   });
+  notifySessionChanged();
 }
 
 /** Rotate tokens for an account after a refresh (plan §5 rotation). */
@@ -161,6 +196,7 @@ export async function updateUser(
       a.studentId === studentId ? { ...a, name: user.name } : a
     ),
   });
+  notifySessionChanged();
 }
 
 export async function setViewerRole(
@@ -177,6 +213,7 @@ export async function setActiveStudent(studentId: number): Promise<void> {
   const index = await readIndex();
   if (!index.accounts.some((a) => a.studentId === studentId)) return;
   await writeIndex({ ...index, activeStudentId: studentId });
+  notifySessionChanged();
 }
 
 /** Remove one account; pick another as active if it was the active one. */
@@ -189,6 +226,7 @@ export async function removeSession(studentId: number): Promise<void> {
       ? (accounts[0]?.studentId ?? null)
       : index.activeStudentId;
   await writeIndex({ activeStudentId, accounts });
+  notifySessionChanged();
 }
 
 /** Clear everything (full sign-out of all accounts). */
@@ -198,4 +236,5 @@ export async function clearAll(): Promise<void> {
     index.accounts.map((a) => storage.removeItem(sessionKey(a.studentId)))
   );
   await storage.removeItem(INDEX_KEY);
+  notifySessionChanged();
 }

@@ -26,7 +26,6 @@ const isDev = typeof __DEV__ !== "undefined" && __DEV__;
 function deliver(event: AnalyticsEvent, props?: Props): void {
   // TODO(analytics): point this at the real sink (backend endpoint or SDK).
   if (isDev) {
-    // eslint-disable-next-line no-console
     console.log(`[analytics] ${event}`, props ?? {});
   }
 }

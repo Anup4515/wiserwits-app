@@ -18,11 +18,16 @@ export default function Search() {
   const term = q.trim().toLowerCase();
   const active = term.length >= 1;
 
-  const courseList = coursesR.query.data;
+  // Both sources are paginated now; search only over what has been loaded.
+  const coursePages = coursesR.query.data?.pages ?? [];
   const merged: CourseCardRow[] = [];
-  if (courseList) {
+  if (coursePages.length > 0) {
     const seen = new Set<number>();
-    for (const c of [...courseList.enrolled, ...courseList.catalog]) {
+    const all = [
+      ...(coursePages[0]?.enrolled ?? []),
+      ...coursePages.flatMap((pg) => pg.catalog),
+    ];
+    for (const c of all) {
       if (!seen.has(c.id)) {
         seen.add(c.id);
         merged.push(c);
@@ -34,7 +39,9 @@ export default function Search() {
     ? merged.filter((c) => c.title.toLowerCase().includes(term))
     : [];
   const articles: ArticleRow[] = active
-    ? (articlesR.query.data ?? []).filter((a) => a.title.toLowerCase().includes(term))
+    ? (articlesR.query.data?.pages.flatMap((pg) => pg.items) ?? []).filter((a) =>
+        a.title.toLowerCase().includes(term)
+      )
     : [];
 
   const hasResults = courses.length > 0 || articles.length > 0;

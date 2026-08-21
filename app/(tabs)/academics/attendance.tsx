@@ -1,5 +1,4 @@
 import { View, Text, StyleSheet, ScrollView, RefreshControl } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 
 import { useAttendance } from "@/api/hooks";
 import { useBoundedMonth } from "@/features/enrollment/useSessionMonths";
@@ -9,7 +8,7 @@ import { QueryView } from "@/components/QueryView";
 import { MonthStepper, SectionHeader, EmptyState, ProvenanceBadge } from "@/components/data-ui";
 import { Donut } from "@/components/charts";
 import { longMonth, longDate, statusColor, statusLabel } from "@/lib/format";
-import { colors, spacing, radius, typography } from "@/theme";
+import { colors, spacing, typography } from "@/theme";
 import type { AttendanceData } from "@/api/student-types";
 
 /**

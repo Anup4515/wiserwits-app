@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 import { useArticles } from "@/api/hooks";
-import { QueryView } from "@/components/QueryView";
+import { QueryListView } from "@/components/QueryView";
 import { Card, Pill } from "@/components/ui";
 import { EmptyState } from "@/components/data-ui";
 import { colors, spacing, typography } from "@/theme";
@@ -23,7 +23,7 @@ export default function ArticlesScreen() {
         <RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} />
       }
     >
-      <QueryView result={result} loadingLabel="Loading articles…">
+      <QueryListView loadMoreLabel="Load more articles" result={result} loadingLabel="Loading articles…">
         {(data) =>
           data.length === 0 ? (
             <EmptyState icon="book-outline" title="No articles yet" />
@@ -39,7 +39,7 @@ export default function ArticlesScreen() {
             </View>
           )
         }
-      </QueryView>
+      </QueryListView>
     </ScrollView>
   );
 }

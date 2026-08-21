@@ -1,31 +1,51 @@
-import { useEffect, useRef } from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable, RefreshControl } from "react-native";
-import { useRouter, type Href } from "expo-router";
+import { useEffect, useMemo, useRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  ActivityIndicator,
+} from "react-native";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useFeed, useMarkFeedRead } from "@/api/hooks";
 import { Card } from "@/components/ui";
-import { QueryView } from "@/components/QueryView";
-import { EmptyState } from "@/components/data-ui";
+import { EmptyState, LoadingState, ErrorState } from "@/components/data-ui";
 import { track } from "@/lib/analytics";
+import { CATEGORY_HREF } from "@/lib/notification-routes";
 import { colors, palette, spacing, radius, typography } from "@/theme";
-import type { FeedCategory, FeedData, FeedItem } from "@/api/student-types";
+import type { FeedCategory, FeedItem } from "@/api/student-types";
 
 /**
- * Activity feed (mock 8, Phase 3) — the daily-open hook. One `/feed` call
- * returns a merged, newest-first list of what happened across the student's
- * school/self data; we group it by calendar day. Opening the screen marks the
- * whole feed read (the watermark bump clears unread dots on next fetch).
+ * Activity feed (mock 8, Phase 3) — the daily-open hook. `/feed` is cursor-
+ * paginated (25 per page); older pages load as the student scrolls. Items are
+ * grouped by calendar day. Opening the screen marks the whole feed read (the
+ * watermark bump clears unread dots on next fetch).
+ *
+ * A FlatList of DAY GROUPS rather than of rows: it keeps the existing "day
+ * label + one Card of rows" design exactly as-is while still virtualising (a
+ * year of feed is ~365 mounted groups instead of thousands of rows). Days hold
+ * a handful of items each, so per-group mounting is cheap.
  */
 export default function FeedScreen() {
-  const result = useFeed();
-  const { query } = result;
+  const { query } = useFeed();
   const markRead = useMarkFeedRead();
+
+  // Flatten every loaded page before grouping, so a day that straddles a page
+  // boundary still renders as one group rather than two.
+  const items = useMemo(
+    () => query.data?.pages.flatMap((p) => p.items) ?? [],
+    [query.data]
+  );
+  const groups = useMemo(() => groupByDay(items), [items]);
 
   // Mark read once per visit, after the first successful load, so the unread
   // dots stay visible while the student is actually looking at them.
   const marked = useRef(false);
-  const hasUnread = query.data?.items.some((i) => i.unread) ?? false;
+  const hasUnread = items.some((i) => i.unread);
   useEffect(() => {
     if (!marked.current && hasUnread) {
       marked.current = true;
@@ -42,37 +62,24 @@ export default function FeedScreen() {
     }
   }, []);
 
-  return (
-    <ScrollView
-      style={styles.root}
-      contentContainerStyle={styles.pad}
-      refreshControl={
-        <RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} />
-      }
-    >
-      <QueryView result={result}>{(data) => <FeedBody data={data} />}</QueryView>
-    </ScrollView>
-  );
-}
-
-function FeedBody({ data }: { data: FeedData }) {
-  if (data.items.length === 0) {
+  if (query.isLoading) return <LoadingState />;
+  if (query.isError || !query.data) {
     return (
-      <Card>
-        <EmptyState
-          icon="notifications-outline"
-          title="Nothing new yet"
-          subtitle="Marks, attendance, feedback and shared plans will show up here as they happen."
-        />
-      </Card>
+      <ErrorState
+        message={query.error instanceof Error ? query.error.message : undefined}
+        onRetry={() => query.refetch()}
+      />
     );
   }
 
-  const groups = groupByDay(data.items);
   return (
-    <>
-      {groups.map((g) => (
-        <View key={g.key} style={{ gap: spacing.sm }}>
+    <FlatList
+      style={styles.root}
+      contentContainerStyle={styles.pad}
+      data={groups}
+      keyExtractor={(g) => g.key}
+      renderItem={({ item: g }) => (
+        <View style={{ gap: spacing.sm }}>
           <Text style={styles.dayLabel}>{g.label}</Text>
           <Card style={{ gap: spacing.md }}>
             {g.items.map((item) => (
@@ -80,22 +87,40 @@ function FeedBody({ data }: { data: FeedData }) {
             ))}
           </Card>
         </View>
-      ))}
-    </>
+      )}
+      ItemSeparatorComponent={() => <View style={{ height: spacing.lg }} />}
+      refreshControl={
+        <RefreshControl
+          refreshing={query.isRefetching && !query.isFetchingNextPage}
+          onRefresh={() => query.refetch()}
+        />
+      }
+      // Pull the next page a little before the bottom so scrolling stays smooth.
+      onEndReachedThreshold={0.4}
+      onEndReached={() => {
+        if (query.hasNextPage && !query.isFetchingNextPage) {
+          void query.fetchNextPage();
+        }
+      }}
+      ListEmptyComponent={
+        <Card>
+          <EmptyState
+            icon="notifications-outline"
+            title="Nothing new yet"
+            subtitle="Marks, attendance, feedback and shared plans will show up here as they happen."
+          />
+        </Card>
+      }
+      ListFooterComponent={
+        query.isFetchingNextPage ? (
+          <View style={styles.footer}>
+            <ActivityIndicator color={colors.navy} />
+          </View>
+        ) : null
+      }
+    />
   );
 }
-
-const ROUTE: Record<FeedCategory, Href> = {
-  assignment: "/assignments",
-  advice: "/advice",
-  feedback: "/advice",
-  consultation: "/(tabs)/health/consultations",
-  diet: "/(tabs)/health/diet",
-  lab: "/(tabs)/health/labs",
-  report: "/(tabs)/academics/report",
-  marks: "/(tabs)/academics/exams",
-  attendance: "/(tabs)/academics/attendance",
-};
 
 const ICON: Record<FeedCategory, { name: keyof typeof Ionicons.glyphMap; tint: string; fg: string }> = {
   assignment: { name: "clipboard-outline", tint: colors.blueBg, fg: colors.blue },
@@ -107,6 +132,13 @@ const ICON: Record<FeedCategory, { name: keyof typeof Ionicons.glyphMap; tint: s
   report: { name: "document-text-outline", tint: palette.primary50, fg: colors.navy },
   marks: { name: "reader-outline", tint: colors.blueBg, fg: colors.blue },
   attendance: { name: "calendar-outline", tint: colors.greenBg, fg: colors.green },
+  reminder: { name: "alarm-outline", tint: colors.amberBg, fg: colors.amber },
+  holistic: { name: "sparkles-outline", tint: palette.accent100, fg: palette.accent600 },
+  timetable: { name: "time-outline", tint: palette.primary50, fg: colors.navy },
+  calendar: { name: "calendar-number-outline", tint: colors.blueBg, fg: colors.blue },
+  live_class: { name: "videocam-outline", tint: palette.accent100, fg: palette.accent600 },
+  workshop: { name: "easel-outline", tint: colors.greenBg, fg: colors.green },
+  certificate: { name: "ribbon-outline", tint: palette.primary50, fg: colors.navy },
 };
 
 function FeedRow({ item }: { item: FeedItem }) {
@@ -114,7 +146,7 @@ function FeedRow({ item }: { item: FeedItem }) {
   const ic = ICON[item.category];
   return (
     <Pressable
-      onPress={() => router.push(ROUTE[item.category])}
+      onPress={() => router.push(CATEGORY_HREF[item.category])}
       style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
     >
       <View style={[styles.rowIc, { backgroundColor: ic.tint }]}>
@@ -180,7 +212,10 @@ function timeLabel(iso: string): string {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  pad: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
+  // No `gap` here — FlatList spaces rows via ItemSeparatorComponent, and a gap
+  // on the content container would double the spacing between day groups.
+  pad: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  footer: { paddingVertical: spacing.lg, alignItems: "center" },
   dayLabel: { ...typography.label, color: colors.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
 
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md },

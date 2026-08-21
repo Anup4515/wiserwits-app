@@ -87,7 +87,7 @@ export function LockGate({ feature }: { feature: string }) {
       </View>
       <Text style={styles.lockTitle}>Unlock {pretty}</Text>
       <Text style={styles.lockBody}>
-        {pretty[0].toUpperCase() + pretty.slice(1)} is part of a plan that isn't
+        {pretty[0].toUpperCase() + pretty.slice(1)} is part of a plan that isn&apos;t
         active yet. Upgrade to see it here.
       </Text>
       <View style={{ height: spacing.md }} />
@@ -112,7 +112,7 @@ export function ErrorState({ message, onRetry }: { message?: string; onRetry?: (
       <View style={styles.errIc}>
         <Ionicons name="cloud-offline-outline" size={30} color={colors.danger} />
       </View>
-      <Text style={styles.stateTitle}>Couldn't load this</Text>
+      <Text style={styles.stateTitle}>Couldn&apos;t load this</Text>
       <Text style={styles.stateSub}>{message || "Something went wrong. Please try again."}</Text>
       {onRetry ? (
         <>

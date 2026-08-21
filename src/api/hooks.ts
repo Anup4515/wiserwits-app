@@ -8,7 +8,13 @@
  * marks), the hook's payload is a union; the screen narrows on `source`.
  */
 import { FEATURE } from "@/lib/features";
-import { useSourceQuery, useApiQuery, type SourceQueryResult } from "@/api/query";
+import {
+  useSourceQuery,
+  useSourceInfiniteQuery,
+  useApiQuery,
+  type SourceQueryResult,
+  type SourceInfiniteQueryResult,
+} from "@/api/query";
 import { useApiMutation } from "@/api/mutations";
 import { api } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
@@ -20,6 +26,9 @@ import type {
   ArticleRow,
   AssignmentRow,
   AttendanceData,
+  BmiHistoryPage,
+  BmiHistoryRow,
+  BmiRecord,
   CalendarData,
   CertificateRow,
   ConsultationRow,
@@ -41,6 +50,7 @@ import type {
   LabReportRow,
   LiveClassRow,
   MarksData,
+  Paged,
   ProfileData,
   ReminderRow,
   ReportCardRow,
@@ -250,10 +260,20 @@ export function useCalendar(month: string): SourceQueryResult<CalendarData | Sel
 // and hits one path — but useSourceQuery still folds the active account into the
 // cache key and gates on the plan feature.
 
-/** Activity feed — always-allowed; backend resolves enrolled/self internally. */
-export function useFeed(): SourceQueryResult<FeedData> {
-  return useSourceQuery<FeedData>({
+/**
+ * Activity feed — always-allowed; backend resolves enrolled/self internally.
+ *
+ * Cursor-paginated: `/feed` returns 25 items plus a `nextCursor`, and older
+ * pages are fetched by feeding that back as `?before=`. This used to be a plain
+ * query with no params, which meant the screen showed the first 25 events and
+ * nothing older was reachable at all.
+ *
+ * `NotificationBell` shares this cache and reads `pages[0]` for its badge.
+ */
+export function useFeed(): SourceInfiniteQueryResult<FeedData> {
+  return useSourceInfiniteQuery<FeedData>({
     key: "feed",
+    cursorParam: "before",
     build: () => ({ path: "/api/student/feed" }),
   });
 }
@@ -309,11 +329,12 @@ export function useFeedback(): SourceQueryResult<TeacherFeedbackRow[]> {
   });
 }
 
-/** Assignments — list with status/marks. */
-export function useAssignments(): SourceQueryResult<AssignmentRow[]> {
-  return useSourceQuery<AssignmentRow[]>({
+/** Assignments — paginated; grows across the whole academic year. */
+export function useAssignments(): SourceInfiniteQueryResult<Paged<AssignmentRow>> {
+  return useSourceInfiniteQuery<Paged<AssignmentRow>>({
     key: "assignments",
     feature: FEATURE.assignments,
+    cursorParam: "page",
     build: () => ({ path: "/api/student/assignments" }),
   });
 }
@@ -349,22 +370,54 @@ export function useSubmitAssignment() {
   });
 }
 
+/**
+ * Full BMI history, cursor-paginated (`/api/student/bmi`).
+ *
+ * Separate from `useHealth()` on purpose: `/health` is an OVERVIEW (latest
+ * reading + counts) and returns a capped preview of readings, so driving the
+ * history list off it meant anything older than that cap was unreachable.
+ * `/bmi` is the paginated history endpoint.
+ */
+export function useBmiHistory(): SourceInfiniteQueryResult<BmiHistoryPage> {
+  return useSourceInfiniteQuery<BmiHistoryPage>({
+    key: "bmi-history",
+    feature: FEATURE.health,
+    cursorParam: "before",
+    build: () => ({ path: "/api/student/bmi" }),
+  });
+}
+
+/**
+ * `/bmi` returns the raw column names as DECIMAL strings; `/health` aliases and
+ * casts them. Normalise here so both paths hand the UI the same `BmiRecord`.
+ */
+export function toBmiRecord(row: BmiHistoryRow): BmiRecord {
+  return {
+    id: row.id,
+    height: Number(row.height_cm),
+    weight: Number(row.weight_kg),
+    bmi: Number(row.bmi),
+    record_date: row.record_date,
+    created_at: row.created_at,
+  };
+}
+
 /** Log a BMI reading. */
 export function useLogBmi() {
   return useApiMutation<{ id: number; bmi: number }, { height_cm: number; weight_kg: number }>({
     path: "/api/student/bmi",
     body: (v) => v,
-    invalidate: [["health"], ["dashboard"], ["feed"]],
+    invalidate: [["health"], ["bmi-history"], ["dashboard"], ["feed"]],
   });
 }
 
 /** Delete a BMI reading (id → DELETE /bmi/[id]). Ownership is enforced
- * server-side. Refreshes the health overview + dashboard's latest-BMI. */
+ * server-side. Refreshes the health overview + history + dashboard latest-BMI. */
 export function useDeleteBmi() {
   return useApiMutation<{ id: number }, number>({
     method: "delete",
     path: (id) => `/api/student/bmi/${id}`,
-    invalidate: [["health"], ["dashboard"]],
+    invalidate: [["health"], ["bmi-history"], ["dashboard"]],
   });
 }
 
@@ -428,10 +481,16 @@ export function useMarkFeedRead() {
 
 // ── Phase 4: content read screens ───────────────────────────────────────────
 
-/** Course catalog + the student's enrolled courses (always-allowed). */
-export function useCourses(): SourceQueryResult<CourseListResponse> {
-  return useSourceQuery<CourseListResponse>({
+/**
+ * Course catalog + the student's enrolled courses (always-allowed).
+ *
+ * Only `catalog` pages — `enrolled` is bounded by what the student has bought
+ * and arrives whole on every page, so read it from `pages[0]`.
+ */
+export function useCourses(): SourceInfiniteQueryResult<CourseListResponse> {
+  return useSourceInfiniteQuery<CourseListResponse>({
     key: "courses",
+    cursorParam: "page",
     build: () => ({ path: "/api/student/courses" }),
   });
 }
@@ -474,29 +533,32 @@ export function useSubmitCourseReview(slug: string) {
   });
 }
 
-/** Certificates issued to the student. */
-export function useCertificates(): SourceQueryResult<CertificateRow[]> {
-  return useSourceQuery<CertificateRow[]>({
+/** Certificates issued to the student — paginated. */
+export function useCertificates(): SourceInfiniteQueryResult<Paged<CertificateRow>> {
+  return useSourceInfiniteQuery<Paged<CertificateRow>>({
     key: "certificates",
     feature: FEATURE.certificates,
+    cursorParam: "page",
     build: () => ({ path: "/api/student/certificates" }),
   });
 }
 
-/** Live classes the student is enrolled in. */
-export function useLiveClasses(): SourceQueryResult<LiveClassRow[]> {
-  return useSourceQuery<LiveClassRow[]>({
+/** Live classes the student is enrolled in — paginated. */
+export function useLiveClasses(): SourceInfiniteQueryResult<Paged<LiveClassRow>> {
+  return useSourceInfiniteQuery<Paged<LiveClassRow>>({
     key: "liveClasses",
     feature: FEATURE.liveClasses,
+    cursorParam: "page",
     build: () => ({ path: "/api/student/live-classes" }),
   });
 }
 
-/** Workshops & webinars (student-specific + broadcast). */
-export function useWorkshops(): SourceQueryResult<WorkshopRow[]> {
-  return useSourceQuery<WorkshopRow[]>({
+/** Workshops & webinars (student-specific + broadcast) — paginated. */
+export function useWorkshops(): SourceInfiniteQueryResult<Paged<WorkshopRow>> {
+  return useSourceInfiniteQuery<Paged<WorkshopRow>>({
     key: "workshops",
     feature: FEATURE.workshops,
+    cursorParam: "page",
     build: () => ({ path: "/api/student/workshops" }),
   });
 }
@@ -510,10 +572,11 @@ export function useReminders(): SourceQueryResult<ReminderRow[]> {
   });
 }
 
-/** Learning articles (always-allowed). */
-export function useArticles(): SourceQueryResult<ArticleRow[]> {
-  return useSourceQuery<ArticleRow[]>({
+/** Learning articles (always-allowed) — paginated; the library keeps growing. */
+export function useArticles(): SourceInfiniteQueryResult<Paged<ArticleRow>> {
+  return useSourceInfiniteQuery<Paged<ArticleRow>>({
     key: "articles",
+    cursorParam: "page",
     build: () => ({ path: "/api/student/articles" }),
   });
 }

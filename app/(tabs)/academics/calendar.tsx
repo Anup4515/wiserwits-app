@@ -7,7 +7,7 @@ import { FEATURE } from "@/lib/features";
 import { Card, Pill } from "@/components/ui";
 import { QueryView } from "@/components/QueryView";
 import { MonthStepper, SectionHeader, EmptyState } from "@/components/data-ui";
-import { longMonth, shortDate, time12 } from "@/lib/format";
+import { longMonth, shortDate } from "@/lib/format";
 import { colors, palette, spacing, radius, typography } from "@/theme";
 import type {
   CalendarData,
@@ -100,7 +100,7 @@ function SelfCalendar({ data }: { data: SelfCalendarData }) {
         <View style={styles.infoRow}>
           <Ionicons name="information-circle-outline" size={18} color={colors.blue} />
           <Text style={styles.infoText}>
-            Weekly classes are on the Timetable screen. This month's workshops and
+            Weekly classes are on the Timetable screen. This month&apos;s workshops and
             live classes show below.
           </Text>
         </View>

@@ -1,12 +1,21 @@
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Linking, Alert } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { View, StyleSheet, ScrollView, RefreshControl, Linking, Alert } from "react-native";
 
 import { useLiveClasses } from "@/api/hooks";
-import { QueryView } from "@/components/QueryView";
-import { Card, Button, Pill } from "@/components/ui";
+import { QueryListView } from "@/components/QueryView";
+import { Pill, type PillTone } from "@/components/ui";
+import {
+  ListCard,
+  DateChip,
+  IconTile,
+  CardHead,
+  CardFooter,
+  CardAction,
+  CardDescription,
+  groupStyle,
+} from "@/components/list-card";
 import { EmptyState, SectionHeader } from "@/components/data-ui";
 import { dateTime, isPastDate } from "@/lib/format";
-import { colors, spacing, typography } from "@/theme";
+import { colors, spacing } from "@/theme";
 import type { LiveClassRow } from "@/api/student-types";
 
 /**
@@ -41,7 +50,6 @@ function phaseOf(c: LiveClassRow): "live" | "upcoming" | "past" {
   return "past";
 }
 
-type PillTone = "green" | "amber" | "red" | "blue" | "navy" | "gold";
 const STATUS_TONE: Record<LiveClassRow["status"], PillTone> = {
   live: "red",
   scheduled: "blue",
@@ -67,7 +75,7 @@ export default function LiveClassesScreen() {
         <RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} />
       }
     >
-      <QueryView result={result} loadingLabel="Loading live classes…">
+      <QueryListView loadMoreLabel="Load more classes" result={result} loadingLabel="Loading live classes…">
         {(data) => {
           if (data.length === 0) {
             return (
@@ -93,21 +101,21 @@ export default function LiveClassesScreen() {
           return (
             <>
               {live.length > 0 ? (
-                <View style={styles.section}>
+                <View style={groupStyle}>
                   <SectionHeader title="Live now" />
                   {live.map((row) => <LiveClassCard key={row.id} row={row} ended={false} />)}
                 </View>
               ) : null}
 
               {upcoming.length > 0 ? (
-                <View style={styles.section}>
+                <View style={groupStyle}>
                   <SectionHeader title="Upcoming" />
                   {upcoming.map((row) => <LiveClassCard key={row.id} row={row} ended={false} />)}
                 </View>
               ) : null}
 
               {past.length > 0 ? (
-                <View style={styles.section}>
+                <View style={groupStyle}>
                   <SectionHeader title="Past" />
                   {past.map((row) => <LiveClassCard key={row.id} row={row} ended />)}
                 </View>
@@ -115,7 +123,7 @@ export default function LiveClassesScreen() {
             </>
           );
         }}
-      </QueryView>
+      </QueryListView>
     </ScrollView>
   );
 }
@@ -131,57 +139,45 @@ function LiveClassCard({ row, ended }: { row: LiveClassRow; ended: boolean }) {
   const tone: PillTone = ended && row.status === "scheduled" ? "navy" : STATUS_TONE[row.status];
 
   return (
-    <Card style={{ gap: spacing.sm }}>
-      <View style={styles.head}>
-        <Text style={styles.title}>{row.title}</Text>
-        <Pill label={label} tone={tone} />
-      </View>
+    // A class that is live right now is the one row worth acting on.
+    <ListCard>
+      <CardHead
+        left={<DateChip iso={row.start_time} />}
+        title={row.title}
+        meta={[{ icon: "time-outline", text: dateTime(row.start_time) }]}
+        right={<IconTile icon="videocam-outline" tone={tone} />}
+      />
 
-      {row.description ? (
-        <Text style={styles.desc} numberOfLines={2}>
-          {row.description}
-        </Text>
-      ) : null}
+      {row.description ? <CardDescription text={row.description} numberOfLines={2} /> : null}
 
-      <View style={styles.meta}>
-        <Ionicons name="time-outline" size={13} color={colors.textMuted} />
-        <Text style={styles.metaText}>{dateTime(row.start_time)}</Text>
-      </View>
-
-      {canJoin ? (
-        <Button
-          label="Join"
-          onPress={() => {
-            if (row.join_link) openLink(row.join_link);
-          }}
-        />
-      ) : canWatch ? (
-        <Button
-          label="Recording"
-          variant="secondary"
-          onPress={() => {
-            if (row.recording_url) openLink(row.recording_url);
-          }}
-        />
-      ) : null}
-    </Card>
+      <CardFooter
+        left={<Pill label={label} tone={tone} />}
+        right={
+          canJoin ? (
+            <CardAction
+              icon="videocam-outline"
+              label="Join"
+              tone="gold"
+              onPress={() => {
+                if (row.join_link) openLink(row.join_link);
+              }}
+            />
+          ) : canWatch ? (
+            <CardAction
+              icon="play-circle-outline"
+              label="Recording"
+              onPress={() => {
+                if (row.recording_url) openLink(row.recording_url);
+              }}
+            />
+          ) : null
+        }
+      />
+    </ListCard>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   pad: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
-
-  section: { gap: spacing.md },
-
-  head: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  title: { ...typography.h2, color: colors.ink, flex: 1 },
-  desc: { ...typography.body, color: colors.textMuted },
-  meta: { flexDirection: "row", alignItems: "center", gap: 4 },
-  metaText: { ...typography.label, color: colors.textMuted },
 });

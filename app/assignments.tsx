@@ -1,11 +1,23 @@
+import { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAssignments, useSubmitAssignment } from "@/api/hooks";
-import { Card, Pill, Button } from "@/components/ui";
-import { QueryView } from "@/components/QueryView";
+import { Card, Pill } from "@/components/ui";
+import {
+  ListCard,
+  DateChip,
+  IconTile,
+  CardHead,
+  CardFooter,
+  CardAction,
+  CardDescription,
+  groupStyle,
+  type MetaItem,
+} from "@/components/list-card";
+import { QueryListView } from "@/components/QueryView";
 import { EmptyState, SectionHeader } from "@/components/data-ui";
-import { colors, spacing, radius, typography } from "@/theme";
+import { colors, spacing, typography } from "@/theme";
 import { shortDate } from "@/lib/format";
 import type { AssignmentRow } from "@/api/student-types";
 
@@ -56,7 +68,7 @@ export default function AssignmentsScreen() {
         <RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} />
       }
     >
-      <QueryView result={result} feature="student.assignments">
+      <QueryListView loadMoreLabel="Load more assignments" result={result} feature="student.assignments">
         {(data) => {
           if (data.length === 0) {
             return (
@@ -76,7 +88,7 @@ export default function AssignmentsScreen() {
           return (
             <>
               {todo.length > 0 ? (
-                <View style={styles.section}>
+                <View style={groupStyle}>
                   <SectionHeader title="To do" />
                   {todo.map((a) => (
                     <AssignmentCard key={a.id} a={a} submit={submit} />
@@ -85,7 +97,7 @@ export default function AssignmentsScreen() {
               ) : null}
 
               {done.length > 0 ? (
-                <View style={styles.section}>
+                <View style={groupStyle}>
                   <SectionHeader title="Completed" />
                   {done.map((a) => (
                     <AssignmentCard key={a.id} a={a} submit={submit} />
@@ -95,7 +107,7 @@ export default function AssignmentsScreen() {
             </>
           );
         }}
-      </QueryView>
+      </QueryListView>
     </ScrollView>
   );
 }
@@ -112,64 +124,82 @@ function AssignmentCard({
   const due = ymd(a.deadline);
   const graded = a.marks_obtained != null || a.total_marks != null;
   const submitting = submit.isPending && submit.variables === a.id;
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  function onSubmit() {
+    setSubmitError(null);
+    submit.mutate(a.id, {
+      // Surface failures — otherwise the spinner just stops and the student
+      // wrongly believes the assignment was submitted (audit H6).
+      onError: (e) =>
+        setSubmitError(
+          e instanceof Error && e.message
+            ? e.message
+            : "Couldn't mark as submitted. Please try again."
+        ),
+    });
+  }
+
+  const meta: MetaItem[] = [];
+  if (due) {
+    // An overdue date is the one meta line that must not read as neutral.
+    meta.push(
+      overdue
+        ? { icon: "alert-circle", text: `Due ${shortDate(due)} · Overdue`, color: colors.danger }
+        : { icon: "calendar-outline", text: `Due ${shortDate(due)}` },
+    );
+  } else if (overdue) {
+    meta.push({ icon: "alert-circle", text: "Overdue", color: colors.danger });
+  }
+  if (graded) {
+    meta.push({
+      icon: "ribbon-outline",
+      text: `${a.marks_obtained ?? "—"}/${a.total_marks ?? "—"} marks`,
+    });
+  }
 
   return (
-    <Card style={{ gap: spacing.sm }}>
-      <View style={styles.head}>
-        <Text style={styles.title}>{a.title}</Text>
-        <Pill label={pill.label} tone={pill.tone} />
-      </View>
+    <ListCard>
+      <CardHead
+        left={<DateChip iso={a.deadline} />}
+        title={a.title}
+        meta={meta}
+        right={<IconTile icon="clipboard-outline" tone={pill.tone} />}
+      />
 
-      {a.description ? (
-        <Text style={styles.desc} numberOfLines={2}>{a.description}</Text>
-      ) : null}
+      {a.description ? <CardDescription text={a.description} numberOfLines={2} /> : null}
 
-      <View style={styles.metaRow}>
-        {due ? (
-          <View style={styles.meta}>
-            <Ionicons name="calendar-outline" size={13} color={colors.textMuted} />
-            <Text style={styles.metaText}>Due {shortDate(due)}</Text>
-          </View>
-        ) : null}
-        {overdue ? (
-          <View style={styles.meta}>
-            <Ionicons name="alert-circle" size={13} color={colors.danger} />
-            <Text style={[styles.metaText, { color: colors.danger }]}>Overdue</Text>
-          </View>
-        ) : null}
-        {graded ? (
-          <View style={styles.meta}>
-            <Ionicons name="ribbon-outline" size={13} color={colors.textMuted} />
-            <Text style={styles.metaText}>
-              {`${a.marks_obtained ?? "—"}/${a.total_marks ?? "—"}`}
-            </Text>
-          </View>
-        ) : null}
-      </View>
-
-      {(a.assignment_link || isTodo(a)) ? (
-        <View style={styles.actions}>
-          {a.assignment_link ? (
-            <View style={styles.action}>
-              <Button
-                label="Open link"
-                variant="secondary"
+      <CardFooter
+        left={<Pill label={pill.label} tone={pill.tone} />}
+        right={
+          <View style={styles.actions}>
+            {a.assignment_link ? (
+              <CardAction
+                icon="open-outline"
+                label="Open"
                 onPress={() => { if (a.assignment_link) Linking.openURL(a.assignment_link); }}
               />
-            </View>
-          ) : null}
-          {isTodo(a) ? (
-            <View style={styles.action}>
-              <Button
-                label="Mark as submitted"
+            ) : null}
+            {isTodo(a) ? (
+              <CardAction
+                icon="checkmark-circle-outline"
+                label="Submit"
+                tone="gold"
                 loading={submitting}
-                onPress={() => submit.mutate(a.id)}
+                onPress={onSubmit}
               />
-            </View>
-          ) : null}
+            ) : null}
+          </View>
+        }
+      />
+
+      {submitError ? (
+        <View style={styles.errRow}>
+          <Ionicons name="alert-circle" size={13} color={colors.danger} />
+          <Text style={styles.errText}>{submitError}</Text>
         </View>
       ) : null}
-    </Card>
+    </ListCard>
   );
 }
 
@@ -177,16 +207,8 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   pad: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
 
-  section: { gap: spacing.md },
+  actions: { flexDirection: "row", gap: spacing.sm },
 
-  head: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.sm },
-  title: { ...typography.h2, color: colors.ink, flex: 1 },
-  desc: { ...typography.body, color: colors.textMuted },
-
-  metaRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.md },
-  meta: { flexDirection: "row", alignItems: "center", gap: 4 },
-  metaText: { ...typography.label, color: colors.textMuted },
-
-  actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.xs },
-  action: { flex: 1 },
+  errRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: spacing.xs },
+  errText: { ...typography.label, color: colors.danger, flex: 1 },
 });

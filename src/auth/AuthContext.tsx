@@ -4,12 +4,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 
 import * as authApi from "@/api/auth";
 import { track } from "@/lib/analytics";
+import { queryClient } from "@/lib/query-client";
 import type { SessionUser } from "@/api/types";
 import {
   addSession,
@@ -22,6 +24,7 @@ import {
   getSessionFor,
   removeSession,
   setActiveStudent,
+  subscribeToSessionChanges,
   updateTokens,
   updateUser,
   type AccountRef,
@@ -68,14 +71,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     activeStudentId: null,
   });
 
+  // Identity behind the currently-cached server state. Compared on every reload
+  // to decide whether the React Query cache is still valid.
+  const cachedIdentity = useRef<{ id: number | null; authed: boolean }>({
+    id: null,
+    authed: false,
+  });
+
   const reload = useCallback(async () => {
     const [accounts, activeStudentId, session] = await Promise.all([
       getAccounts(),
       getActiveStudentId(),
       getActiveSession(),
     ]);
+    const authed = !!session;
+
+    // Drop cached server state whenever the identity behind it changes —
+    // account switch, sign-out, or a refresh token dying mid-session. Query
+    // keys are endpoint-shaped ("dashboard", "feed"), not student-shaped, so a
+    // surviving entry would render one sibling's data under another's session
+    // until the refetch landed. Skipped on first load, where there is nothing
+    // cached to invalidate.
+    const prev = cachedIdentity.current;
+    const hadIdentity = prev.id !== null || prev.authed;
+    if (hadIdentity && (prev.id !== activeStudentId || (prev.authed && !authed))) {
+      queryClient.clear();
+    }
+    cachedIdentity.current = { id: activeStudentId, authed };
+
     setState({
-      status: session ? "authenticated" : "unauthenticated",
+      status: authed ? "authenticated" : "unauthenticated",
       user: session?.user ?? null,
       accounts,
       activeStudentId,
@@ -84,6 +109,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void reload();
+    // The store also changes without user action: `api/client.ts` drops an
+    // account when its refresh token is rejected. Subscribing is what turns
+    // that into an actual sign-out instead of leaving the UI "authenticated"
+    // against tokens that no longer exist.
+    //
+    // The explicit `await reload()` calls in signIn/switchAccount/etc. stay —
+    // those callers need state settled BEFORE they return so navigation reads
+    // the new value. This subscription costs a second (idempotent) read in
+    // those paths and is the only path for the involuntary case.
+    return subscribeToSessionChanges(() => {
+      void reload();
+    });
   }, [reload]);
 
   const signIn = useCallback(

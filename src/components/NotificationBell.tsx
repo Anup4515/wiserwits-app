@@ -23,7 +23,11 @@ export function NotificationBell({
 }) {
   const router = useRouter();
   const { query } = useFeed();
-  const unread = query.data?.items.reduce((n, i) => n + (i.unread ? 1 : 0), 0) ?? 0;
+  // The feed is paginated; the badge only cares about the newest page. Counting
+  // across every loaded page would make the number jump as the Feed screen
+  // scrolls and pulls older items in.
+  const unread =
+    query.data?.pages[0]?.items.reduce((n, i) => n + (i.unread ? 1 : 0), 0) ?? 0;
 
   return (
     <Pressable

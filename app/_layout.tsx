@@ -1,14 +1,17 @@
 import { useEffect } from "react";
+import { AppState, Platform, View, type AppStateStatus } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, focusManager } from "@tanstack/react-query";
 
 import { queryClient } from "@/lib/query-client";
 import { colors } from "@/theme";
 import { AuthProvider, useAuth } from "@/auth/AuthContext";
 import { EnrollmentProvider } from "@/features/enrollment/EnrollmentContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { track } from "@/lib/analytics";
 
 /**
@@ -105,18 +108,45 @@ function RootNavigator() {
   );
 }
 
+/**
+ * Bridge React Native's AppState into TanStack Query's focusManager. Without
+ * this, `refetchOnWindowFocus` is a no-op on native (there's no browser window),
+ * so the feed/badge never refresh when the app returns to the foreground. With
+ * it, coming back to a foregrounded app refetches any stale query (staleTime
+ * 60s) — including the notification feed — so a teacher/consultant's new
+ * activity surfaces on re-open instead of only on manual navigation.
+ */
+function useAppStateFocus() {
+  useEffect(() => {
+    function onChange(status: AppStateStatus) {
+      // No-op on web (real window focus already works there).
+      if (Platform.OS !== "web") focusManager.setFocused(status === "active");
+    }
+    const sub = AppState.addEventListener("change", onChange);
+    return () => sub.remove();
+  }, []);
+}
+
 export default function RootLayout() {
+  useAppStateFocus();
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <EnrollmentProvider>
-              <StatusBar style="light" />
-              <RootNavigator />
-            </EnrollmentProvider>
-          </AuthProvider>
-        </QueryClientProvider>
+        {/* ErrorBoundary sits above the providers + navigator so it also
+            survives a throw from a context provider, not just a screen. */}
+        <ErrorBoundary>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <EnrollmentProvider>
+                <StatusBar style="light" />
+                <View style={{ flex: 1 }}>
+                  <RootNavigator />
+                  <OfflineBanner />
+                </View>
+              </EnrollmentProvider>
+            </AuthProvider>
+          </QueryClientProvider>
+        </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

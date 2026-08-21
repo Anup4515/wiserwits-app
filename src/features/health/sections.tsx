@@ -4,11 +4,23 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useDeleteBmi } from "@/api/hooks";
-import { Card, Button, Pill } from "@/components/ui";
+import { Card, Button, Pill, type PillTone } from "@/components/ui";
+import {
+  ListCard,
+  DateChip,
+  IconTile,
+  CardHead,
+  CardFooter,
+  CardAction,
+  CardBlock,
+  CardDescription,
+  Note,
+  groupStyle,
+} from "@/components/list-card";
 import { SectionHeader, EmptyState } from "@/components/data-ui";
 import { TrendChart } from "@/components/charts";
 import { downloadAndShare, resolveFileUrl } from "@/lib/download";
-import { colors, palette, spacing, radius, typography } from "@/theme";
+import { colors, spacing, radius, typography } from "@/theme";
 import type {
   HealthData,
   BmiRecord,
@@ -133,6 +145,15 @@ export function BmiHistory({ records }: { records: BmiRecord[] }) {
 }
 
 // ── Consultations ────────────────────────────────────────────────────────────
+
+/**
+ * Consultations split into Upcoming / Past.
+ *
+ * An appointment list's most important question is "when is my next one", so
+ * the split is the structure rather than one flat chronological list. Each
+ * entry is its own card with a status-tinted icon and a date block, and the
+ * next upcoming appointment is highlighted.
+ */
 export function ConsultationsSection({ rows }: { rows: ConsultationRow[] }) {
   if (rows.length === 0) {
     return (
@@ -145,28 +166,76 @@ export function ConsultationsSection({ rows }: { rows: ConsultationRow[] }) {
       </Card>
     );
   }
+
+  const now = Date.now();
+  const isUpcoming = (r: ConsultationRow) => {
+    const t = new Date(r.scheduled_at).getTime();
+    const done = ["completed", "cancelled", "rejected"].includes(r.status?.toLowerCase());
+    return !done && !Number.isNaN(t) && t >= now;
+  };
+
+  // Upcoming: soonest first (that is the one you act on). Past: most recent first.
+  const upcoming = rows.filter(isUpcoming).sort((a, b) => +new Date(a.scheduled_at) - +new Date(b.scheduled_at));
+  const past = rows.filter((r) => !isUpcoming(r)).sort((a, b) => +new Date(b.scheduled_at) - +new Date(a.scheduled_at));
+
   return (
-    <Card style={{ gap: spacing.md }}>
-      {rows.map((r, i) => (
-        <View key={r.id} style={[styles.row, i > 0 && styles.rowDivider]}>
-          <View style={styles.rowHead}>
-            <Text style={styles.rowTitle} numberOfLines={1}>
-              {r.problem || r.patient_name}
-            </Text>
-            <Pill label={statusText(r.status)} tone={statusTone(r.status)} />
-          </View>
-          <Text style={styles.rowSub}>
-            {r.patient_name} · {dateTime(r.scheduled_at)}
-          </Text>
-          {r.feedback ? (
-            <View style={styles.feedback}>
-              <Ionicons name="chatbox-ellipses-outline" size={13} color={colors.textMuted} />
-              <Text style={styles.feedbackText}>{r.feedback}</Text>
-            </View>
-          ) : null}
+    <View style={{ gap: spacing.lg }}>
+      {upcoming.length > 0 ? (
+        <View style={groupStyle}>
+          <SectionHeader title={`Upcoming · ${upcoming.length}`} />
+          {upcoming.map((r, i) => (
+            <ConsultationCard key={r.id} row={r} isNext={i === 0} />
+          ))}
         </View>
-      ))}
-    </Card>
+      ) : null}
+
+      {past.length > 0 ? (
+        <View style={groupStyle}>
+          <SectionHeader title={`Past · ${past.length}`} />
+          {past.map((r) => (
+            <ConsultationCard key={r.id} row={r} isNext={false} />
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+// `isNext` no longer changes the card chrome — every card looks the same.
+// It only decides whether the "Next" pill is shown.
+function ConsultationCard({ row, isNext }: { row: ConsultationRow; isNext: boolean }) {
+  const tone = statusTone(row.status);
+  const valid = !Number.isNaN(new Date(row.scheduled_at).getTime());
+
+  return (
+    <ListCard>
+      <CardHead
+        left={<DateChip iso={row.scheduled_at} />}
+        title={row.problem || row.patient_name}
+        meta={[
+          { icon: "person-outline", text: row.patient_name },
+          ...(valid ? [{ icon: "time-outline" as const, text: timeOnly(row.scheduled_at) }] : []),
+        ]}
+        right={<IconTile icon="medkit-outline" tone={tone} />}
+      />
+
+      <CardFooter
+        left={
+          <>
+            {isNext ? <Pill label="Next" tone="gold" /> : null}
+            <Pill label={statusText(row.status)} tone={tone} />
+          </>
+        }
+      />
+
+      {/* `symptoms` and `feedback` were both being dropped by the old layout. */}
+      {row.symptoms ? (
+        <Note icon="fitness-outline" label="Symptoms" text={row.symptoms} tone="blue" />
+      ) : null}
+      {row.feedback ? (
+        <Note icon="chatbox-ellipses-outline" label="Consultant note" text={row.feedback} tone="green" />
+      ) : null}
+    </ListCard>
   );
 }
 
@@ -184,17 +253,19 @@ export function DietPlansSection({ rows }: { rows: DietPlanRow[] }) {
     );
   }
   return (
-    <Card style={{ gap: spacing.md }}>
-      {rows.map((r, i) => (
-        <DietPlanItem key={r.id} plan={r} divider={i > 0} />
+    <View style={groupStyle}>
+      <SectionHeader title={`Shared plans · ${rows.length}`} />
+      {rows.map((r) => (
+        <DietPlanItem key={r.id} plan={r} />
       ))}
-    </Card>
+    </View>
   );
 }
 
-function DietPlanItem({ plan, divider }: { plan: DietPlanRow; divider: boolean }) {
+function DietPlanItem({ plan }: { plan: DietPlanRow }) {
   const [downloading, setDownloading] = useState(false);
   const fileUrl = resolveFileUrl(plan.file_path);
+  const validity = validityOf(plan.valid_upto);
 
   async function download() {
     if (!fileUrl) return;
@@ -204,24 +275,32 @@ function DietPlanItem({ plan, divider }: { plan: DietPlanRow; divider: boolean }
   }
 
   return (
-    <View style={[styles.listRow, divider && styles.rowDivider]}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.rowTitle} numberOfLines={1}>{plan.title}</Text>
-        {plan.description ? (
-          <Text style={styles.rowSub} numberOfLines={2}>{plan.description}</Text>
-        ) : null}
-        <Text style={styles.rowDate}>{shortDay(plan.share_date)}</Text>
-      </View>
-      {fileUrl ? (
-        <Pressable onPress={download} hitSlop={8} disabled={downloading} style={styles.dlBtn}>
-          {downloading ? (
-            <ActivityIndicator size="small" color={colors.navy} />
-          ) : (
-            <Ionicons name="download-outline" size={20} color={colors.navy} />
-          )}
-        </Pressable>
-      ) : null}
-    </View>
+    <ListCard>
+      <CardHead
+        left={<DateChip iso={plan.share_date} />}
+        title={plan.title}
+        meta={[{ icon: "person-outline", text: "Shared by consultant" }]}
+        right={<IconTile icon="nutrition-outline" tone="green" />}
+      />
+
+      {plan.description ? <CardDescription text={plan.description} /> : null}
+
+      {/* `valid_upto` was stored and never shown — it is the one field that
+          tells a student whether the plan still applies. */}
+      <CardFooter
+        left={validity ? <Pill label={validity.label} tone={validity.tone} /> : null}
+        right={
+          fileUrl ? (
+            <CardAction
+              icon="download-outline"
+              label="Download"
+              loading={downloading}
+              onPress={download}
+            />
+          ) : null
+        }
+      />
+    </ListCard>
   );
 }
 
@@ -239,19 +318,26 @@ export function LabReportsSection({ rows }: { rows: LabReportRow[] }) {
     );
   }
   return (
-    <Card style={{ gap: spacing.md }}>
-      {rows.map((r, i) => (
-        <View key={r.id} style={[styles.listRow, i > 0 && styles.rowDivider]}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowTitle} numberOfLines={1}>{r.title}</Text>
-            {r.report_data ? (
-              <Text style={styles.rowSub} numberOfLines={2}>{r.report_data}</Text>
-            ) : null}
-          </View>
-          <Text style={styles.rowDate}>{shortDay(r.created_at)}</Text>
-        </View>
+    <View style={groupStyle}>
+      <SectionHeader title={`Reports · ${rows.length}`} />
+      {rows.map((r) => (
+        <ListCard key={r.id}>
+          <CardHead
+            left={<DateChip iso={r.created_at} />}
+            title={r.title}
+            meta={[{ icon: "document-text-outline", text: "Shared by consultant" }]}
+            right={<IconTile icon="flask-outline" tone="amber" />}
+          />
+          {/* The result text IS the report — give it its own readable block
+              rather than a two-line muted subtitle. */}
+          {r.report_data ? (
+            <CardBlock>
+              <Text style={styles.resultText}>{r.report_data}</Text>
+            </CardBlock>
+          ) : null}
+        </ListCard>
       ))}
-    </Card>
+    </View>
   );
 }
 
@@ -265,19 +351,6 @@ export function shortDay(iso: string): string {
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 
-/** ISO datetime → "2 Jul, 2:30 PM". */
-function dateTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  let h = d.getHours();
-  const min = String(d.getMinutes()).padStart(2, "0");
-  const suffix = h >= 12 ? "PM" : "AM";
-  h = h % 12 || 12;
-  return `${d.getDate()} ${MONTHS[d.getMonth()]}, ${h}:${min} ${suffix}`;
-}
-
-type PillTone = "green" | "amber" | "red" | "blue" | "navy" | "gold";
-
 export function bmiCategory(bmi: number): { label: string; tone: PillTone } {
   if (bmi < 18.5) return { label: "Underweight", tone: "blue" };
   if (bmi < 25) return { label: "Normal", tone: "green" };
@@ -288,6 +361,36 @@ export function bmiCategory(bmi: number): { label: string; tone: PillTone } {
 function statusText(status: string): string {
   if (!status) return "—";
   return status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " ");
+}
+
+/** ISO datetime → "2:30 PM". The date is shown separately in the date block. */
+function timeOnly(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  let h = d.getHours();
+  const min = String(d.getMinutes()).padStart(2, "0");
+  const suffix = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${h}:${min} ${suffix}`;
+}
+
+/**
+ * Turn a diet plan's `valid_upto` into a status pill. Expired plans matter —
+ * a student following an out-of-date plan is the failure this surfaces.
+ */
+function validityOf(validUpto: string | null): { label: string; tone: PillTone } | null {
+  if (!validUpto) return null;
+  const end = new Date(validUpto);
+  if (Number.isNaN(end.getTime())) return null;
+  // Compare date-only so a plan valid "today" does not read as expired.
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  const days = Math.round((end.getTime() - today.getTime()) / 86_400_000);
+  if (days < 0) return { label: "Expired", tone: "red" };
+  if (days === 0) return { label: "Ends today", tone: "amber" };
+  if (days <= 7) return { label: `${days} day${days === 1 ? "" : "s"} left`, tone: "amber" };
+  return { label: `Valid till ${shortDay(validUpto)}`, tone: "green" };
 }
 
 function statusTone(status: string): PillTone {
@@ -311,21 +414,17 @@ const styles = StyleSheet.create({
   bmiValue: { fontSize: 40, fontWeight: "800", color: colors.ink, letterSpacing: -1 },
   bmiMeta: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
 
-  row: { gap: spacing.xs },
   listRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   rowDivider: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.md },
-  rowHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
   rowTitle: { ...typography.label, color: colors.ink, fontSize: 13.5, flexShrink: 1 },
   rowSub: { ...typography.caption, color: colors.textMuted, marginTop: 1 },
-  rowDate: { ...typography.caption, color: colors.textMuted },
-  dlBtn: {
-    width: 40, height: 40, borderRadius: radius.md, backgroundColor: palette.primary50,
-    alignItems: "center", justifyContent: "center",
-  },
   trashBtn: {
     width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.redBg,
     alignItems: "center", justifyContent: "center",
   },
-  feedback: { flexDirection: "row", gap: 6, marginTop: spacing.xs, alignItems: "flex-start" },
-  feedbackText: { ...typography.caption, color: colors.text, flex: 1 },
+
+  // Body text on a list card. The rest of the card system lives in
+  // components/list-card.tsx and is shared with the non-health lists.
+  itemBody: { ...typography.body, color: colors.textMuted },
+  resultText: { ...typography.body, color: colors.text, fontSize: 13, lineHeight: 20 },
 });

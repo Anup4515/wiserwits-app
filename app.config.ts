@@ -41,10 +41,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     package: "com.wiserwits.studentapp",
     adaptiveIcon: {
-      backgroundColor: "#1A2658",
+      // White background so the navy "W" reads clearly; the foreground logo is
+      // padded on white too, so background + foreground blend seamlessly.
+      backgroundColor: "#ffffff",
       foregroundImage: "./assets/images/android-icon-foreground.png",
-      backgroundImage: "./assets/images/android-icon-background.png",
-      monochromeImage: "./assets/images/android-icon-monochrome.png",
     },
     predictiveBackGestureEnabled: false,
   },
@@ -67,9 +67,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       "expo-splash-screen",
       {
-        backgroundColor: "#1A2658",
+        // White splash so the WiserWits logo (navy W) is visible, matching the
+        // app icon.
+        backgroundColor: "#ffffff",
         image: "./assets/images/splash-icon.png",
-        imageWidth: 96,
+        imageWidth: 200,
       },
     ],
   ],
@@ -79,5 +81,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   extra: {
     apiBaseUrl: API_BASE_URL,
+    // EAS project id (from `eas init`). Read by push registration via
+    // Constants.expoConfig.extra.eas.projectId (getExpoPushTokenAsync).
+    eas: {
+      projectId: "efa95fb0-3825-4931-90cc-2d5f4331286b",
+    },
   },
 });

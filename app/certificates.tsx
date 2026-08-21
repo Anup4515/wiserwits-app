@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, ScrollView, RefreshControl, Linking, Alert } fr
 import { Ionicons } from "@expo/vector-icons";
 
 import { useCertificates } from "@/api/hooks";
-import { QueryView } from "@/components/QueryView";
+import { QueryListView } from "@/components/QueryView";
 import { Card, Button } from "@/components/ui";
 import { EmptyState } from "@/components/data-ui";
 import { colors, spacing, typography } from "@/theme";
@@ -39,7 +39,7 @@ export default function CertificatesScreen() {
         <RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} />
       }
     >
-      <QueryView result={result} loadingLabel="Loading certificates…">
+      <QueryListView loadMoreLabel="Load older certificates" result={result} loadingLabel="Loading certificates…">
         {(data) =>
           data.length === 0 ? (
             <EmptyState
@@ -55,7 +55,7 @@ export default function CertificatesScreen() {
             </View>
           )
         }
-      </QueryView>
+      </QueryListView>
     </ScrollView>
   );
 }

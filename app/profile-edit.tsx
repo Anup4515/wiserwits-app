@@ -19,11 +19,11 @@ import { useProfile, useUpdateProfile, useUploadProfileImage, type ProfileUpdate
 import { Button, Field, Avatar } from "@/components/ui";
 import { LoadingState, ErrorState } from "@/components/data-ui";
 import { env } from "@/lib/env";
-import { colors, palette, spacing, radius, typography } from "@/theme";
+import { colors, spacing, radius, typography } from "@/theme";
 import type { StudentProfile } from "@/api/student-types";
 
 // The text fields a student can edit (mirrors the backend's ALLOWED_FIELDS).
-const FIELDS: { key: keyof EditForm; label: string; keyboard?: "phone-pad" }[] = [
+const FIELDS: { key: keyof EditFormValues; label: string; keyboard?: "phone-pad" }[] = [
   { key: "phone", label: "Phone", keyboard: "phone-pad" },
   { key: "alternate_phone", label: "Alternate phone", keyboard: "phone-pad" },
   { key: "address", label: "Address" },
@@ -33,7 +33,7 @@ const FIELDS: { key: keyof EditForm; label: string; keyboard?: "phone-pad" }[] =
   { key: "postal_code", label: "Postal code" },
 ];
 
-interface EditForm {
+interface EditFormValues {
   phone: string;
   alternate_phone: string;
   address: string;
@@ -43,7 +43,7 @@ interface EditForm {
   postal_code: string;
 }
 
-function formFrom(s: StudentProfile): EditForm {
+function formFrom(s: StudentProfile): EditFormValues {
   return {
     phone: s.phone ?? "",
     alternate_phone: s.alternate_phone ?? "",
@@ -74,7 +74,7 @@ export default function ProfileEdit() {
 function EditForm({ student, independent }: { student: StudentProfile; independent: boolean }) {
   const router = useRouter();
   const initial = useMemo(() => formFrom(student), [student]);
-  const [form, setForm] = useState<EditForm>(initial);
+  const [form, setForm] = useState<EditFormValues>(initial);
   const [grade, setGrade] = useState<number | null>(student.grade_level);
 
   const update = useUpdateProfile();
@@ -87,7 +87,7 @@ function EditForm({ student, independent }: { student: StudentProfile; independe
     FIELDS.some(({ key }) => form[key] !== initial[key]) ||
     (independent && grade !== student.grade_level);
 
-  const set = (key: keyof EditForm, value: string) => setForm((f) => ({ ...f, [key]: value }));
+  const set = (key: keyof EditFormValues, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
   async function pickPhoto() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();

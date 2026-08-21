@@ -8,8 +8,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCourses, useEnrollCourse } from "@/api/hooks";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/api/client";
-import { QueryView } from "@/components/QueryView";
-import { Card, Button, Pill } from "@/components/ui";
+import { QueryView, LoadMoreRow } from "@/components/QueryView";
+import type { SourceQueryResult } from "@/api/query";
+import { Pill } from "@/components/ui";
 import { SectionHeader, EmptyState } from "@/components/data-ui";
 import { track } from "@/lib/analytics";
 import {
@@ -25,6 +26,7 @@ import type {
   CourseOrderResponse,
   CourseVerifyResponse,
 } from "@/api/student-types";
+import { ListCard, CardFooter, CardAction, CardDescription } from "@/components/list-card";
 
 /**
  * Courses / Learning (Phase 4.5). Enrolled courses (tap to open) + a catalog
@@ -36,6 +38,23 @@ export default function CoursesScreen() {
   const result = useCourses();
   const { query } = result;
 
+  // The endpoint pages only its CATALOGUE; `enrolled` is repeated whole on
+  // every page. Rebuild the single response shape CoursesBody expects:
+  // enrolled from the first page, catalogue concatenated across all of them.
+  const flatResult = {
+    ...result,
+    query: {
+      ...query,
+      data: query.data
+        ? {
+            enrolled: query.data.pages[0]?.enrolled ?? [],
+            catalog: query.data.pages.flatMap((pg) => pg.catalog),
+            nextCursor: query.data.pages[query.data.pages.length - 1]?.nextCursor ?? null,
+          }
+        : undefined,
+    },
+  } as unknown as SourceQueryResult<CourseListResponse>;
+
   return (
     <ScrollView
       style={styles.root}
@@ -44,9 +63,10 @@ export default function CoursesScreen() {
         <RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} />
       }
     >
-      <QueryView result={result} loadingLabel="Loading courses…">
+      <QueryView result={flatResult} loadingLabel="Loading courses…">
         {(data) => <CoursesBody data={data} />}
       </QueryView>
+      <LoadMoreRow query={query} label="Load more courses" />
     </ScrollView>
   );
 }
@@ -216,7 +236,7 @@ function CourseCard({
   const free = !Number.isFinite(price) || price <= 0;
 
   return (
-    <Card style={styles.courseCard}>
+    <ListCard>
       <Pressable
         onPress={onOpen}
         disabled={!onOpen}
@@ -242,23 +262,24 @@ function CourseCard({
         {onOpen ? <Ionicons name="chevron-forward" size={18} color={colors.textMuted} /> : null}
       </Pressable>
 
-      {course.description ? (
-        <Text style={styles.courseDesc} numberOfLines={2}>{course.description}</Text>
-      ) : null}
+      {course.description ? <CardDescription text={course.description} numberOfLines={2} /> : null}
 
       {onAcquire ? (
-        <View style={styles.cardFooter}>
-          <Text style={styles.price}>{free ? "Free" : `₹${formatInr(price)}`}</Text>
-          <Button
-            label={busy ? "Processing…" : acquireLabel ?? "Get"}
-            onPress={onAcquire}
-            loading={busy}
-            disabled={busy}
-            variant="primary"
-          />
-        </View>
+        <CardFooter
+          left={<Text style={styles.price}>{free ? "Free" : `₹${formatInr(price)}`}</Text>}
+          right={
+            <CardAction
+              icon={free ? "download-outline" : "card-outline"}
+              label={busy ? "Processing…" : acquireLabel ?? "Get"}
+              tone="gold"
+              loading={busy}
+              disabled={busy}
+              onPress={onAcquire}
+            />
+          }
+        />
       ) : null}
-    </Card>
+    </ListCard>
   );
 }
 
@@ -274,15 +295,12 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   pad: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
 
-  courseCard: { gap: spacing.sm },
   courseHead: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  thumb: { width: 52, height: 52, borderRadius: radius.md, backgroundColor: colors.bg },
+  thumb: { width: 52, height: 52, borderRadius: radius.md, backgroundColor: colors.card },
   thumbFallback: { alignItems: "center", justifyContent: "center" },
   courseTitle: { ...typography.label, color: colors.ink, fontWeight: "700" },
   metaRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: 4, flexWrap: "wrap" },
   metaText: { ...typography.caption, color: colors.textMuted },
-  courseDesc: { ...typography.caption, color: colors.textMuted },
-  cardFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md },
   price: { fontSize: 18, fontWeight: "800", color: colors.navy },
 
   noteRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm, paddingHorizontal: spacing.xs },

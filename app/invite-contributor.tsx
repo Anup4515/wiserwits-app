@@ -88,7 +88,7 @@ export default function InviteContributorScreen() {
     >
       <Text style={styles.heading}>Invite a contributor</Text>
       <Text style={styles.subheading}>
-        They'll get an email invite and can fill in the data you allow below.
+        They&apos;ll get an email invite and can fill in the data you allow below.
       </Text>
 
       <View style={{ height: spacing.lg }} />

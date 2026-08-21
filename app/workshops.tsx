@@ -1,12 +1,21 @@
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Linking, Alert } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { View, StyleSheet, ScrollView, RefreshControl, Linking, Alert } from "react-native";
 
 import { useWorkshops } from "@/api/hooks";
-import { QueryView } from "@/components/QueryView";
-import { Card, Button, Pill } from "@/components/ui";
+import { QueryListView } from "@/components/QueryView";
+import { Pill } from "@/components/ui";
+import {
+  ListCard,
+  DateChip,
+  IconTile,
+  CardHead,
+  CardFooter,
+  CardAction,
+  CardDescription,
+  groupStyle,
+} from "@/components/list-card";
 import { EmptyState, SectionHeader } from "@/components/data-ui";
 import { mediumDate, isPastDate } from "@/lib/format";
-import { colors, spacing, typography } from "@/theme";
+import { colors, spacing } from "@/theme";
 import type { WorkshopRow } from "@/api/student-types";
 
 /**
@@ -41,7 +50,7 @@ export default function WorkshopsScreen() {
         <RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} />
       }
     >
-      <QueryView result={result} loadingLabel="Loading workshops…">
+      <QueryListView loadMoreLabel="Load more workshops" result={result} loadingLabel="Loading workshops…">
         {(data) => {
           if (data.length === 0) {
             return (
@@ -63,16 +72,16 @@ export default function WorkshopsScreen() {
           return (
             <>
               {upcoming.length > 0 ? (
-                <View style={styles.section}>
+                <View style={groupStyle}>
                   <SectionHeader title="Upcoming" />
-                  {upcoming.map((row) => (
-                    <WorkshopCard key={row.id} row={row} past={false} />
+                  {upcoming.map((row, i) => (
+                    <WorkshopCard key={row.id} row={row} past={false} next={i === 0} />
                   ))}
                 </View>
               ) : null}
 
               {past.length > 0 ? (
-                <View style={styles.section}>
+                <View style={groupStyle}>
                   <SectionHeader title="Past" />
                   {past.map((row) => (
                     <WorkshopCard key={row.id} row={row} past />
@@ -82,39 +91,44 @@ export default function WorkshopsScreen() {
             </>
           );
         }}
-      </QueryView>
+      </QueryListView>
     </ScrollView>
   );
 }
 
-function WorkshopCard({ row, past }: { row: WorkshopRow; past: boolean }) {
+function WorkshopCard({ row, past, next = false }: { row: WorkshopRow; past: boolean; next?: boolean }) {
   return (
-    <Card style={{ gap: spacing.sm }}>
-      <View style={styles.head}>
-        <Text style={styles.title}>{row.title}</Text>
-        {past ? <Pill label="Ended" tone="navy" /> : null}
-      </View>
+    <ListCard>
+      <CardHead
+        left={<DateChip iso={row.start_date} />}
+        title={row.title}
+        meta={[{ icon: "calendar-outline", text: mediumDate(row.start_date) }]}
+        right={<IconTile icon="easel-outline" tone={past ? "navy" : "gold"} />}
+      />
 
-      {row.description ? (
-        <Text style={styles.desc} numberOfLines={3}>
-          {row.description}
-        </Text>
-      ) : null}
+      {row.description ? <CardDescription text={row.description} /> : null}
 
-      <View style={styles.meta}>
-        <Ionicons name="calendar-outline" size={13} color={colors.textMuted} />
-        <Text style={styles.metaText}>{mediumDate(row.start_date)}</Text>
-      </View>
-
-      {!past && row.join_link ? (
-        <Button
-          label="Join"
-          onPress={() => {
-            if (row.join_link) openLink(row.join_link);
-          }}
-        />
-      ) : null}
-    </Card>
+      <CardFooter
+        left={
+          <>
+            {next ? <Pill label="Next" tone="gold" /> : null}
+            <Pill label={past ? "Ended" : "Upcoming"} tone={past ? "navy" : "blue"} />
+          </>
+        }
+        right={
+          !past && row.join_link ? (
+            <CardAction
+              icon="videocam-outline"
+              label="Join"
+              tone="gold"
+              onPress={() => {
+                if (row.join_link) openLink(row.join_link);
+              }}
+            />
+          ) : null
+        }
+      />
+    </ListCard>
   );
 }
 
@@ -122,16 +136,4 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   pad: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
 
-  section: { gap: spacing.md },
-
-  head: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  title: { ...typography.h2, color: colors.ink, flex: 1 },
-  desc: { ...typography.body, color: colors.textMuted },
-  meta: { flexDirection: "row", alignItems: "center", gap: 4 },
-  metaText: { ...typography.label, color: colors.textMuted },
 });

@@ -95,7 +95,7 @@ export default function AskAdviceScreen() {
     >
       <Text style={styles.heading}>Ask Consultant</Text>
       <Text style={styles.subheading}>
-        Send a question to the assigned consultant. They'll reply in the advice thread.
+        Send a question to the assigned consultant. They&apos;ll reply in the advice thread.
       </Text>
 
       <View style={{ height: spacing.lg }} />
@@ -138,7 +138,7 @@ export default function AskAdviceScreen() {
         ) : null}
       </Pressable>
       {!wantCall ? (
-        <Text style={styles.hint}>Tick the box above to pick a call time. Otherwise you'll get a written reply.</Text>
+        <Text style={styles.hint}>Tick the box above to pick a call time. Otherwise you&apos;ll get a written reply.</Text>
       ) : null}
 
       {wantCall && Platform.OS === "ios" && showIosPicker ? (

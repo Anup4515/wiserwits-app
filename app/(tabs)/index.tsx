@@ -45,11 +45,19 @@ function todayLabel(): string {
 type DisplayClass = { key: string | number; time: string; subject: string; meta: string };
 
 /** "HH:MM[:SS]" → minutes since midnight; -1 when empty/unparseable. */
-function hmsToMinutes(hms: string | null | undefined): number {
-  if (!hms) return -1;
+/**
+ * "HH:MM[:SS]" → minutes since midnight, or null when it is missing or
+ * unparseable.
+ *
+ * null, NOT a numeric sentinel: the caller compares with `now >= lastEnd`, and
+ * any sentinel like -1 satisfies that at every hour of the day — so "we don't
+ * know when the last class ends" would silently mean "the day is already over".
+ */
+function hmsToMinutes(hms: string | null | undefined): number | null {
+  if (!hms) return null;
   const [h, m] = hms.split(":");
   const mins = Number(h) * 60 + Number(m ?? 0);
-  return Number.isFinite(mins) ? mins : -1;
+  return Number.isFinite(mins) ? mins : null;
 }
 
 /** Current local time as minutes since midnight — the flip clock. */
@@ -371,13 +379,22 @@ function HomeBody({
           meta: [p.teacher_name, p.location].filter(Boolean).join(" · "),
         }));
 
-  // Latest end_time among today's classes (minutes since midnight); -1 if none.
+  // Latest end_time among today's classes (minutes since midnight), or null when
+  // today has no periods — or none of them carry a usable end time.
   const lastEnd = (
     source === "enrolled" ? school?.today_timetable ?? [] : self?.today_timetable ?? []
-  ).reduce((max, p) => Math.max(max, hmsToMinutes(p.end_time)), -1);
+  ).reduce<number | null>((max, p) => {
+    const mins = hmsToMinutes(p.end_time);
+    if (mins === null) return max;
+    return max === null ? mins : Math.max(max, mins);
+  }, null);
 
-  // Flip once today's last class has ended — or immediately if nothing today.
-  const showTomorrow = todayDisplay.length === 0 || nowMinutes() >= lastEnd;
+  // Flip to tomorrow only once we KNOW today's last class has ended. Previously
+  // a missing end time collapsed to -1, and `now >= -1` is true at every hour —
+  // so the card jumped to "Tomorrow's classes" at 2 AM with the whole school day
+  // still ahead. Unknown end time now means "stay on today".
+  const todayIsOver = lastEnd !== null && nowMinutes() >= lastEnd;
+  const showTomorrow = todayDisplay.length === 0 || todayIsOver;
 
   // Only hit the weekly-timetable endpoint when we actually need tomorrow.
   const tt = useTimetable(showTomorrow);
