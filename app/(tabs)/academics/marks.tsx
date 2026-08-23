@@ -7,7 +7,7 @@ import { Card } from "@/components/ui";
 import { QueryView } from "@/components/QueryView";
 import { SectionHeader, EmptyState } from "@/components/data-ui";
 import { ProgressRing } from "@/components/charts";
-import { time12, shortDate, scoreColor, gradeColor, isGraded } from "@/lib/format";
+import { time12, shortDate, scoreColor, gradeColor, isGraded, num } from "@/lib/format";
 import { colors, spacing, radius, typography } from "@/theme";
 import type { ExamRow, MarksData } from "@/api/student-types";
 
@@ -73,7 +73,7 @@ function MarksBody({ data }: { data: MarksData }) {
               ? data.summary.grade!
               : `${Math.round(data.summary.percentage)}%`
           }
-          centerSub={`${data.summary.total_obtained}/${data.summary.total_max}`}
+          centerSub={`${num(data.summary.total_obtained)}/${num(data.summary.total_max)}`}
         />
         <View style={{ flex: 1, gap: 4 }}>
           <Text style={styles.summaryTitle}>Overall</Text>
@@ -83,7 +83,7 @@ function MarksBody({ data }: { data: MarksData }) {
             <Text style={styles.summaryPct}>{Math.round(data.summary.percentage)}%</Text>
           ) : null}
           <Text style={styles.summarySub}>
-            {data.summary.total_obtained} out of {data.summary.total_max} marks
+            {num(data.summary.total_obtained)} out of {num(data.summary.total_max)} marks
           </Text>
         </View>
       </Card>
@@ -111,8 +111,8 @@ function MarksBody({ data }: { data: MarksData }) {
               ) : (
                 <>
                   <Text style={styles.marks}>
-                    {m.obtained_marks ?? "—"}
-                    <Text style={styles.marksMax}> / {m.maximum_marks}</Text>
+                    {num(m.obtained_marks)}
+                    <Text style={styles.marksMax}> / {num(m.maximum_marks)}</Text>
                   </Text>
                   {isGraded(m.grade) ? (
                     <View style={[styles.gradeChip, { backgroundColor: gradeColor(m.grade) }]}>

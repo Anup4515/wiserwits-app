@@ -1,9 +1,9 @@
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Image, Pressable } from "react-native";
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Image, Pressable, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-import { useProfile } from "@/api/hooks";
-import { Card, Avatar, Pill } from "@/components/ui";
+import { useProfile, useDisputeEnrollment } from "@/api/hooks";
+import { Card, Avatar, Pill, Button } from "@/components/ui";
 import { LoadingState, ErrorState } from "@/components/data-ui";
 import { longDate } from "@/lib/format";
 import { env } from "@/lib/env";
@@ -110,6 +110,35 @@ export default function ProfileDetails() {
 }
 
 function AcademicCard({ enr }: { enr: ProfileEnrollment }) {
+  const dispute = useDisputeEnrollment();
+
+  function onDispute() {
+    Alert.alert(
+      "Dispute this enrollment?",
+      "Use this only if a school added you by mistake. Your own tracked data stays yours, and the school will be flagged.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Dispute",
+          style: "destructive",
+          onPress: () =>
+            dispute.mutate(enr.enrollment_id, {
+              onSuccess: () =>
+                Alert.alert(
+                  "Enrollment disputed",
+                  "Your school has been flagged, and your own data is unaffected.",
+                ),
+              onError: (e) =>
+                Alert.alert(
+                  "Couldn't dispute",
+                  e instanceof Error ? e.message : "Please try again.",
+                ),
+            }),
+        },
+      ],
+    );
+  }
+
   return (
     <Section title="Academic" icon="school-outline">
       <InfoRow label="School" value={enr.school_name} />
@@ -117,6 +146,16 @@ function AcademicCard({ enr }: { enr: ProfileEnrollment }) {
       <InfoRow label="Section" value={enr.section_name} />
       <InfoRow label="Roll number" value={enr.roll_number} />
       <InfoRow label="Session" value={enr.session_name} last />
+      {enr.can_dispute ? (
+        <View style={{ marginTop: spacing.md }}>
+          <Button
+            label={dispute.isPending ? "Disputing…" : "This isn't my school"}
+            variant="ghost"
+            loading={dispute.isPending}
+            onPress={onDispute}
+          />
+        </View>
+      ) : null}
     </Section>
   );
 }

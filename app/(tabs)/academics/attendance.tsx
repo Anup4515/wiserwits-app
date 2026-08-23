@@ -7,7 +7,7 @@ import { Card } from "@/components/ui";
 import { QueryView } from "@/components/QueryView";
 import { MonthStepper, SectionHeader, EmptyState, ProvenanceBadge } from "@/components/data-ui";
 import { Donut } from "@/components/charts";
-import { longMonth, longDate, statusColor, statusLabel } from "@/lib/format";
+import { longMonth, longDate, statusColor, statusLabel, pct } from "@/lib/format";
 import { colors, spacing, typography } from "@/theme";
 import type { AttendanceData } from "@/api/student-types";
 
@@ -73,7 +73,7 @@ function AttendanceBody({ data }: { data: AttendanceData }) {
       <Card style={styles.summary}>
         <Donut
           segments={segments}
-          centerLabel={`${s.attendance_percentage}%`}
+          centerLabel={pct(s.attendance_percentage)}
           centerSub="present"
         />
         <View style={styles.legend}>

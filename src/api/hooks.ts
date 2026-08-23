@@ -83,6 +83,39 @@ export function useEnrollments(): UseQueryResult<EnrollmentRow[]> {
 }
 
 /**
+ * All of the student's enrollments including PENDING join requests. Unlike
+ * useEnrollments (gated on source==='enrolled'), this fetches for INDEPENDENT
+ * students too — they're exactly the ones who receive join requests. Filter the
+ * result to status==='pending' at the call site.
+ */
+export function useJoinRequests(): UseQueryResult<EnrollmentRow[]> {
+  const { activeStudentId } = useAuth();
+  return useApiQuery<EnrollmentRow[]>(
+    ["join-requests", activeStudentId],
+    "/api/student/enrollments",
+    activeStudentId != null,
+  );
+}
+
+/** Approve a school's join request (id → pending becomes active). */
+export function useApproveEnrollment() {
+  return useApiMutation<{ id: number; status: string }, number>({
+    method: "post",
+    path: (id) => `/api/student/enrollments/${id}/approve`,
+    invalidate: [["join-requests"], ["enrollments"], ["dashboard"], ["profile"]],
+  });
+}
+
+/** Decline a school's join request (id → pending becomes rejected). */
+export function useDeclineEnrollment() {
+  return useApiMutation<{ id: number; status: string }, number>({
+    method: "post",
+    path: (id) => `/api/student/enrollments/${id}/decline`,
+    invalidate: [["join-requests"], ["enrollments"]],
+  });
+}
+
+/**
  * The full student record for the profile-details screen (opened from the home
  * header avatar). A bare `useApiQuery` — the profile isn't source- or
  * enrollment-scoped, so no `?enrollment_id=` override is threaded; the backend
@@ -468,6 +501,20 @@ export function useRevokeContributor() {
     method: "delete",
     path: (id) => `/api/student/access-grants/${id}`,
     invalidate: [["contributors"]],
+  });
+}
+
+/**
+ * Dispute a school enrollment (id → POST /enrollments/[id]/dispute). Use only
+ * when a school added the student by mistake — the enrollment is flagged
+ * 'disputed' (data preserved), drops out of the active view, and contributor
+ * editing resumes. Refreshes enrollments + the home dashboard.
+ */
+export function useDisputeEnrollment() {
+  return useApiMutation<{ id: number; status: string }, number>({
+    method: "post",
+    path: (id) => `/api/student/enrollments/${id}/dispute`,
+    invalidate: [["enrollments"], ["dashboard"], ["profile"]],
   });
 }
 

@@ -18,7 +18,7 @@ import {
 import { QueryListView } from "@/components/QueryView";
 import { EmptyState, SectionHeader } from "@/components/data-ui";
 import { colors, spacing, typography } from "@/theme";
-import { shortDate } from "@/lib/format";
+import { shortDate, num } from "@/lib/format";
 import type { AssignmentRow } from "@/api/student-types";
 
 /**
@@ -154,7 +154,7 @@ function AssignmentCard({
   if (graded) {
     meta.push({
       icon: "ribbon-outline",
-      text: `${a.marks_obtained ?? "—"}/${a.total_marks ?? "—"} marks`,
+      text: `${num(a.marks_obtained)}/${num(a.total_marks)} marks`,
     });
   }
 

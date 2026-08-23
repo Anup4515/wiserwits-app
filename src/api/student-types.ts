@@ -72,11 +72,15 @@ export interface StudentProfile {
 }
 
 export interface ProfileEnrollment {
+  enrollment_id: number;
   school_name: string | null;
   class_name: string;
   section_name: string;
   roll_number: string | null;
   session_name: string;
+  // True only for independent-origin accounts (student created it themselves).
+  // School-created students don't get the "this isn't my school" dispute option.
+  can_dispute?: boolean;
 }
 
 export interface ProfileData {

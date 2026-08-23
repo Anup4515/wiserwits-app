@@ -9,7 +9,7 @@ import { QueryView } from "@/components/QueryView";
 import { SourceBadge, SectionHeader, EmptyState, StatTile } from "@/components/data-ui";
 import { ProgressRing, TrendChart, BarRow } from "@/components/charts";
 import { bmiCategory } from "@/features/health/sections";
-import { shortMonth, longMonth, scoreColor } from "@/lib/format";
+import { shortMonth, longMonth, scoreColor, pct } from "@/lib/format";
 import { gradients, colors, palette, spacing, radius, typography } from "@/theme";
 import type { InsightsData } from "@/api/student-types";
 
@@ -82,7 +82,7 @@ function InsightsBody({ data, source }: { data: InsightsData; source: "enrolled"
             size={116}
             color={colors.navy}
             centerLabel={data.overall.grade ?? "—"}
-            centerSub={data.overall.percentage != null ? `${data.overall.percentage}%` : "No marks"}
+            centerSub={data.overall.percentage != null ? pct(data.overall.percentage) : "No marks"}
           />
           <Text style={styles.ringFoot}>{data.overall.exams_counted} subjects</Text>
         </Card>
@@ -142,7 +142,7 @@ function InsightsBody({ data, source }: { data: InsightsData; source: "enrolled"
               key={s.subject}
               label={s.subject}
               value={s.percentage}
-              valueLabel={`${s.percentage}%`}
+              valueLabel={pct(s.percentage)}
               color={scoreColor(s.percentage)}
             />
           ))}

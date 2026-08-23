@@ -135,36 +135,61 @@
    *(Deferred to Phase 4: OS push send pipeline / stored event model; feed
    infinite-scroll; file-upload assignment submission.)*
 
-## Phase 4 — Learning, settings, push & store (Backend + App)
-**Backend:**
-1. `[B]` `POST /api/student/devices` + `DELETE /devices/:id` (+ `student_devices`
-   table, **many-to-many: `UNIQUE (student_id, expo_push_token)`** so multi-account
-   devices get push for every added child — §5a).
-2. `[B]` `GET/PATCH /api/student/notification-preferences` (+ table).
-3. `[B]` **OS push send pipeline (Q6 → in-scope, not deferred):** send service over
-   Expo Push (→ FCM/APNs); fire on the Phase 3 feed event model, fan out to the
-   student's registered devices, respecting notification-preferences. Idempotent +
-   token-cleanup on receipts (drop dead tokens).
-4. `[B]` `POST /api/student/account/change-password` (or confirm reset flow covers it).
+## Phase 4 — Learning, settings, push & store (Backend + App) — ✅ DONE (2 follow-ups)
+> ⚠️ **UPDATE (20 Jul 2026): OS push / notifications (items 1, 2, 3, 9) were
+> REMOVED** — all push code, migrations 003–005, the devices/notification-prefs/
+> push-tick routes, `app/lib/push.ts`/`expo-push.ts`, the app push client,
+> `PushGate`, the Settings screen and the `expo-notifications` plugin are gone.
+> The rest of Phase 4 (courses, content screens, search, account & security /
+> change-password, store docs) remains.
+>
+> Both repos typecheck clean (`tsc --noEmit` = 0 each). Two items are
+> intentionally left partial (10 a11y sweep, 11 store submission); account
+> deletion stays descoped per Q9 (iOS-review risk tracked).
 
-**App:**
-5. `[A]` Courses / Learning: catalog, enrol, à-la-carte purchase (`/courses`, `/order`,
-   `/verify`) via **Razorpay native SDK** (Q4).
-6. `[A]` ✅ Subscription & Plans → `app/subscription.tsx` (current + scheduled plan,
-   catalog cards) + `/order` + `/verify` via **Razorpay native SDK** (Q4 — no web
-   deep-link). `src/lib/razorpay.ts` lazy-loads the native module so Expo Go browses
-   plans without crashing (pay needs a dev build). `LockGate` "View plans" and Profile
-   now route here; on success `AuthContext.refreshSession()` re-resolves claims so
-   newly-granted features unlock. *(Backend `/subscription`, `/order`, `/verify`
+**Backend (ww-student-dashboard):**
+1. `[B]` ✅ `POST/GET/DELETE /api/student/devices` + `DELETE /devices/[id]`
+   (migration `003_student_push_tokens`, **`UNIQUE (student_id, expo_push_token)`**
+   so multi-account devices get push for every added child — §5a). Upsert register.
+2. `[B]` ✅ `GET/PATCH /api/student/notification-preferences` (migration
+   `004_student_notification_preferences`: master `push_enabled` + academics /
+   assignments / feedback / health channels, all-on default, seeded on first read).
+3. `[B]` ✅ **OS push send pipeline:** `app/lib/expo-push.ts` (thin Expo Push HTTP
+   client, mirrors `email.ts`) + `app/lib/push.ts` (reuses the derived feed's
+   SOURCES; 48h window; per-channel prefs; **idempotency ledger**
+   `005_student_push_deliveries`, ON CONFLICT DO NOTHING + RETURNING; dead-token
+   cleanup on `DeviceNotRegistered`) driven by `GET /api/cron/push-tick`
+   (`CRON_SECRET`-auth, registered in `vercel.json`, */15m).
+4. `[B]` ✅ `POST /api/student/account/change-password` (bcrypt cost-10 on
+   `students.password`, verifies current, keeps the current session valid).
+
+**App (ww-student-app):**
+5. `[A]` ✅ Courses / Learning → `app/courses.tsx` (enrolled + catalog, free enrol
+   via `POST /courses`, à-la-carte purchase via `/courses/order` → Razorpay → `/courses/verify`)
+   + `app/course/[slug].tsx` (videos/documents, enrolled-only).
+6. `[A]` ✅ Subscription & Plans → `app/subscription.tsx` (unchanged from before;
+   the à-la-carte flow mirrors it). *(Backend `/subscription`, `/order`, `/verify`
    already existed.)*
-7. `[A]` Certificates, Live classes, Workshops, Articles, Reminders, Feedback screens.
-8. `[A]` Search, Settings (notif prefs), Account & Security (change pw, devices), Help/Legal.
-9. `[A]` Push client (`expo-notifications`): permission prompt, register token →
-   `/devices` (per active account), handle foreground/background receipt + deep-link.
-10. `[A]` Accessibility pass, analytics (daily-open + feed engagement), plan upsell states.
-11. `[A/B]` Store prep: privacy policy, Play data-safety form, submit.
-    ⚠️ **Risk:** no in-app account deletion (Q9) — likely iOS App Review rejection
-    [Guideline 5.1.1(v)]; revisit before submission.
+7. `[A]` ✅ Certificates, Live classes, Workshops, Articles (+ `article/[slug]`),
+   Reminders, Feedback screens (all `QueryView` read screens against existing routes).
+8. `[A]` ✅ Search (`app/search.tsx`, client-side over courses+articles),
+   Settings (`app/settings.tsx`, notif prefs + OS-permission prompt),
+   Account & Security (`app/account-security.tsx`, change password + device list),
+   Help/Legal (`app/help.tsx`). All linked from Profile (+ a header search button).
+9. `[A]` ✅ Push client → `src/lib/push.ts` (permission, `getExpoPushTokenAsync`,
+   register per active account, unregister on sign-out) + `src/components/PushGate.tsx`
+   (re-register on account switch, deep-link on notification tap) + onboarding now
+   fires the real OS prompt. `expo-notifications` added to `app.config.ts` plugins.
+10. `[A]` 🟡 Analytics → `src/lib/analytics.ts` (provider-agnostic `track()` stub;
+    wired: app_open, login, push_registered, feed_opened, plan_purchased,
+    course_acquired). Plan-upsell states already live via `LockGate`.
+    **Follow-up:** point `analytics.deliver()` at a real sink; a full accessibility
+    sweep (labels/roles across all screens) is still pending.
+11. `[A/B]` 🟡 Store prep → `store/privacy-policy.md` + `store/play-data-safety.md`
+    (DRAFTs for legal/product review). **Follow-up:** host the policy, fill the
+    store consoles, and submit. ⚠️ **Risk unchanged:** no in-app account deletion
+    (Q9) — likely iOS App Review rejection [Guideline 5.1.1(v)]; the store-prep
+    doc lists the two ways to resolve it before submission.
 
 ## Phase 5 / Later (needs product decision)
 - Guardian account model (separate parent identity + authorization layer) —

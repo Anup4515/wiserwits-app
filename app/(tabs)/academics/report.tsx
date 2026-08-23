@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Linking, Pressable } from "react-native";
+import { useState } from "react";
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/auth/AuthContext";
@@ -9,7 +10,8 @@ import { QueryView } from "@/components/QueryView";
 import { SectionHeader, EmptyState } from "@/components/data-ui";
 import { ProgressRing, BarRow } from "@/components/charts";
 import { t } from "@/lib/copy";
-import { longMonth, longDate, pct, scoreColor, gradeColor } from "@/lib/format";
+import { longMonth, longDate, pct, num, scoreColor, gradeColor } from "@/lib/format";
+import { downloadAndShare } from "@/lib/download";
 import { colors, palette, spacing, radius, typography } from "@/theme";
 import type { ReportCardRow, SelfReportData } from "@/api/student-types";
 
@@ -84,17 +86,40 @@ function EnrolledReports({ cards }: { cards: ReportCardRow[] }) {
           ) : null}
 
           {c.pdf_url ? (
-            <Pressable
-              onPress={() => Linking.openURL(c.pdf_url as string)}
-              style={({ pressed }) => [styles.pdfBtn, pressed && { opacity: 0.85 }]}
-            >
-              <Ionicons name="download-outline" size={16} color={colors.navy} />
-              <Text style={styles.pdfText}>Download PDF</Text>
-            </Pressable>
+            <PdfDownloadButton
+              url={c.pdf_url}
+              filename={`report-${c.reference_month ?? c.type}.pdf`}
+            />
           ) : null}
         </Card>
       ))}
     </View>
+  );
+}
+
+/**
+ * Downloads the report PDF to the device and opens the native share/save sheet.
+ * Uses downloadAndShare (auth-aware for same-host URLs; works with the public
+ * report URLs too) instead of Linking.openURL, which can't save the file.
+ */
+function PdfDownloadButton({ url, filename }: { url: string; filename: string }) {
+  const [downloading, setDownloading] = useState(false);
+  return (
+    <Pressable
+      disabled={downloading}
+      onPress={async () => {
+        setDownloading(true);
+        try {
+          await downloadAndShare(url, filename);
+        } finally {
+          setDownloading(false);
+        }
+      }}
+      style={({ pressed }) => [styles.pdfBtn, (pressed || downloading) && { opacity: 0.85 }]}
+    >
+      <Ionicons name="download-outline" size={16} color={colors.navy} />
+      <Text style={styles.pdfText}>{downloading ? "Downloading…" : "Download PDF"}</Text>
+    </Pressable>
   );
 }
 
@@ -117,14 +142,23 @@ function SelfReport({ data }: { data: SelfReportData }) {
           value={data.overall?.percentage ?? 0}
           size={116}
           color={scoreColor(data.overall?.percentage ?? null)}
-          centerLabel={data.overall?.grade ?? "—"}
-          centerSub={data.overall ? `${Math.round(data.overall.percentage)}%` : "No marks"}
+          centerLabel={
+            data.overall?.grade ??
+            (data.overall ? `${Math.round(data.overall.percentage)}%` : "—")
+          }
+          centerSub={
+            data.overall?.grade
+              ? `${Math.round(data.overall.percentage)}%`
+              : data.overall
+                ? "Overall"
+                : "No marks"
+          }
         />
         <View style={{ flex: 1, gap: spacing.sm }}>
           <Metric label="Overall" value={data.overall ? `${Math.round(data.overall.percentage)}%` : "—"} color={colors.navy} />
           <Metric
             label="Attendance"
-            value={`${data.attendance.percentage}%`}
+            value={pct(data.attendance.percentage)}
             color={scoreColor(data.attendance.percentage)}
           />
           <Text style={styles.cardSub}>
@@ -158,7 +192,7 @@ function SelfReport({ data }: { data: SelfReportData }) {
                   <View key={j} style={styles.subjLine}>
                     <Text style={styles.subjName}>{s.subject}</Text>
                     <Text style={styles.subjMarks}>
-                      {s.obtained}/{s.maximum}
+                      {num(s.obtained)}/{num(s.maximum)}
                     </Text>
                     {s.grade ? <Pill label={s.grade} tone="navy" /> : null}
                   </View>

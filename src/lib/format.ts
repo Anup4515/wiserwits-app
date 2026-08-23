@@ -140,6 +140,21 @@ export function pct(v: number | string | null | undefined): string {
   return Number.isFinite(n) ? `${Math.round(n)}%` : "—";
 }
 
+/**
+ * Format a number for display: round to at most `maxDp` decimals (default 2)
+ * and strip trailing zeros. Kills floating-point sum artifacts like
+ * "486.4199999999996" → "486.42" (also 486.5 → "486.5", 486 → "486").
+ * Accepts number|string; returns "—" for null/empty/non-finite so callers can
+ * drop their own `?? "—"`.
+ */
+export function num(v: number | string | null | undefined, maxDp = 2): string {
+  if (v == null || v === "") return "—";
+  const n = typeof v === "string" ? parseFloat(v) : v;
+  if (!Number.isFinite(n)) return "—";
+  const f = 10 ** maxDp;
+  return String(Math.round(n * f) / f);
+}
+
 /** A tone colour for a 0–100 performance/attendance value. */
 export function scoreColor(value: number | null | undefined): string {
   if (value == null) return colors.textMuted;
