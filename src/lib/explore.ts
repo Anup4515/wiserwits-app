@@ -42,7 +42,7 @@ export const EXPLORE: ExploreItem[] = [
   { icon: "document-text-outline", label: "Report", href: "/(tabs)/academics/report", tint: colors.blueBg, fg: colors.blue, group: "Academics", subtitle: "Report card & holistic ratings" },
   { icon: "time-outline", label: "Timetable", href: "/(tabs)/academics/timetable", tint: colors.greenBg, fg: colors.green, group: "Academics", subtitle: "Weekly class schedule" },
   { icon: "today-outline", label: "Calendar", href: "/(tabs)/academics/calendar", tint: colors.amberBg, fg: colors.amber, group: "Academics", subtitle: "Working days, holidays & events" },
-  { icon: "stats-chart-outline", label: "Insights", href: "/(tabs)/insights", tint: palette.accent100, fg: palette.accent600, group: "Academics", subtitle: "How things are going, at a glance" },
+  { icon: "stats-chart-outline", label: "Insights", href: "/insights", tint: palette.accent100, fg: palette.accent600, group: "Academics", subtitle: "How things are going, at a glance" },
   { icon: "card-outline", label: "Plans", href: "/subscription", tint: palette.primary50, fg: colors.navy, group: "Account", subtitle: "View & change the plan" },
   { icon: "school-outline", label: "Courses", href: "/courses", tint: palette.accent100, fg: palette.accent600, group: "Learning", subtitle: "Browse, enrol & keep learning" },
   { icon: "videocam-outline", label: "Live classes", href: "/live-classes", tint: colors.redBg, fg: colors.red, group: "Learning", subtitle: "Upcoming & recorded sessions" },
@@ -55,7 +55,9 @@ export const EXPLORE: ExploreItem[] = [
   // Account & settings (moved here from the Profile tab).
   { icon: "lock-closed-outline", label: "Account & Security", href: "/account-security", tint: palette.primary50, fg: colors.navy, group: "Account", subtitle: "Password and devices" },
   { icon: "people-outline", label: "Accounts", href: "/account-switcher", tint: colors.blueBg, fg: colors.blue, group: "Account", subtitle: "Switch or add an account" },
-  { icon: "help-circle-outline", label: "Help & Legal", href: "/help", tint: colors.greenBg, fg: colors.green, group: "Account", subtitle: "Support, privacy and terms" },
+  // Hidden for now — not shown in Explore. (Route /help still exists; re-enable
+  // before store submission: privacy/terms/support are effectively required.)
+  // { icon: "help-circle-outline", label: "Help & Legal", href: "/help", tint: colors.greenBg, fg: colors.green, group: "Account", subtitle: "Support, privacy and terms" },
 ];
 
 /**

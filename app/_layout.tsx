@@ -62,7 +62,7 @@ function RootNavigator() {
 
       {/* Phase 3 — retention + write surfaces */}
       <Stack.Screen name="feed" options={{ title: "Activity" }} />
-      <Stack.Screen name="advice" options={{ title: "Advice & Feedback" }} />
+      <Stack.Screen name="advice" options={{ title: "Consultant Advice" }} />
       <Stack.Screen name="assignments" options={{ title: "Assignments" }} />
       <Stack.Screen name="contributors" options={{ title: "Contributors" }} />
       <Stack.Screen name="subscription" options={{ title: "Plans & Subscription" }} />
@@ -74,6 +74,9 @@ function RootNavigator() {
       <Stack.Screen name="live-classes" options={{ title: "Live classes" }} />
       <Stack.Screen name="workshops" options={{ title: "Workshops" }} />
       <Stack.Screen name="articles" options={{ title: "Learn" }} />
+      {/* Insights was a tab; it now opens from Home's Explore tile. Its own
+          gradient hero (with a back button) provides the header. */}
+      <Stack.Screen name="insights" options={{ headerShown: false }} />
       <Stack.Screen name="article/[slug]" options={{ title: "Article" }} />
       <Stack.Screen name="reminders" options={{ title: "Reminders" }} />
       <Stack.Screen name="feedback" options={{ title: "Consultant feedback" }} />

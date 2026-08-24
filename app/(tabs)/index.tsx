@@ -12,6 +12,9 @@ import { SectionHeader, SourceBadge, EmptyState } from "@/components/data-ui";
 import { t } from "@/lib/copy";
 import { time12, pct, scoreColor, gradeColor, isGraded, shortMonth } from "@/lib/format";
 import { HOME_EXPLORE, type ExploreItem } from "@/lib/explore";
+import { InsightsContent } from "@/features/insights/InsightsContent";
+import { EnrollmentSwitcher } from "@/features/enrollment/EnrollmentSwitcher";
+import { useSelectedEnrollment } from "@/features/enrollment/useSessionMonths";
 import { gradients, colors, palette, spacing, radius, typography, shadow } from "@/theme";
 import type { DashboardData, TimetableData, SelfTimetableRow } from "@/api/student-types";
 
@@ -209,6 +212,12 @@ export default function Home() {
               </Pressable>
             </View>
           </View>
+          {/* Class switcher — only renders for students enrolled in >1 class;
+              switching re-scopes the Home cards (they fetch via useSourceQuery,
+              which folds the selected enrollment_id into the request). */}
+          <View style={{ marginTop: spacing.md }}>
+            <EnrollmentSwitcher />
+          </View>
         </SafeAreaView>
       </LinearGradient>
 
@@ -263,6 +272,10 @@ export default function Home() {
         {showUpgrade ? <UpgradeCard onPress={() => router.push("/subscription")} /> : null}
 
         {data ? <HomeBody data={data} school={school} self={self} source={source} /> : null}
+
+        {/* Insights cards inline on Home (no header / source badge / insight-of-
+            the-day — those live on the dedicated Insights screen). */}
+        <InsightsContent showSourceBadge={false} showInsightOfDay={false} />
 
         {/* Explore launcher — Home shows two tidy rows: the curated
             HOME_EXPLORE shortlist plus a "View all" tile that opens the
@@ -357,6 +370,13 @@ function HomeBody({
   const hasUpNext = liveClass != null || reminder != null;
   const courses = personal.enrolled_courses ?? [];
 
+  // "Today's/Tomorrow's classes" only makes sense for the CURRENT session. When
+  // a student switches to a PAST session's class, show a past-session note +
+  // a link to that class's full weekly timetable instead of a misleading
+  // today/tomorrow schedule.
+  const selectedEnrollment = useSelectedEnrollment();
+  const isPastSession = source === "enrolled" && !!selectedEnrollment && !selectedEnrollment.is_current;
+
   // ── Classes card: today's full list until the last period ends, then flip ──
   // The card shows every one of today's classes right up to the last period's
   // end time, then flips (title + data) to tomorrow's schedule. Today comes
@@ -396,8 +416,9 @@ function HomeBody({
   const todayIsOver = lastEnd !== null && nowMinutes() >= lastEnd;
   const showTomorrow = todayDisplay.length === 0 || todayIsOver;
 
-  // Only hit the weekly-timetable endpoint when we actually need tomorrow.
-  const tt = useTimetable(showTomorrow);
+  // Only hit the weekly-timetable endpoint when we actually need tomorrow (and
+  // not for a past session, which shows a note instead).
+  const tt = useTimetable(showTomorrow && !isPastSession);
   const displayClasses = showTomorrow ? tomorrowClasses(tt.query.data, source) : todayDisplay;
   const cardTitle = showTomorrow ? "Tomorrow's classes" : "Today's classes";
   const loadingTomorrow = showTomorrow && tt.query.isLoading;
@@ -407,10 +428,31 @@ function HomeBody({
       {/* Classes — today's list until the last period ends, then tomorrow's */}
       <Card style={{ gap: spacing.md }}>
         <View style={styles.cardHead}>
-          <Text style={styles.cardTitle}>{cardTitle}</Text>
-          <SourceBadge source={source} schoolLabel={data.student.school_name} />
+          <Text style={styles.cardTitle}>
+            {isPastSession && selectedEnrollment
+              ? `${selectedEnrollment.class_name} - ${selectedEnrollment.section_name}`
+              : cardTitle}
+          </Text>
+          <SourceBadge source={source} />
         </View>
-        {loadingTomorrow ? (
+        {isPastSession ? (
+          <View style={{ gap: spacing.md }}>
+            <EmptyState
+              icon="time-outline"
+              title={`Past session · ${selectedEnrollment?.session_name ?? ""}`}
+              subtitle="There's no live schedule for a past session. Open the timetable to see this class's full weekly schedule."
+            />
+            <Pressable
+              onPress={() => router.push("/(tabs)/academics/timetable")}
+              accessibilityRole="button"
+              accessibilityLabel="View timetable"
+              style={{ flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "center" }}
+            >
+              <Text style={{ color: colors.navy, fontWeight: "700" }}>View timetable</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.navy} />
+            </Pressable>
+          </View>
+        ) : loadingTomorrow ? (
           <EmptyState icon="time-outline" title="Loading…" subtitle="Fetching tomorrow's schedule." />
         ) : displayClasses.length === 0 ? (
           <EmptyState

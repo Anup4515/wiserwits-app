@@ -1,7 +1,6 @@
-import { View, Text, StyleSheet, ScrollView, RefreshControl } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
+import { View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter, type Href } from "expo-router";
 
 import { useInsights } from "@/api/hooks";
 import { Card, Pill } from "@/components/ui";
@@ -10,43 +9,49 @@ import { SourceBadge, SectionHeader, EmptyState, StatTile } from "@/components/d
 import { ProgressRing, TrendChart, BarRow } from "@/components/charts";
 import { bmiCategory } from "@/features/health/sections";
 import { shortMonth, longMonth, scoreColor, pct } from "@/lib/format";
-import { gradients, colors, palette, spacing, radius, typography } from "@/theme";
+import { colors, palette, spacing, typography } from "@/theme";
 import type { InsightsData } from "@/api/student-types";
 
 /**
- * Insights (mock 3) — the retention screen. Grade ring, attendance trend,
- * holistic bars, strengths/focus and a single "insight of the day", all from
- * one `/insights` aggregate. Works for enrolled and independent students.
+ * The Insights cards (grade & attendance rings, trends, holistic, subjects,
+ * wellness, learning) WITHOUT the screen chrome — so it can be dropped into
+ * both the dedicated /insights screen and the Home tab. Owns its own
+ * `useInsights` query (React Query dedupes by key, so rendering it alongside
+ * the screen's own useInsights makes just one network call).
  */
-export default function InsightsScreen() {
+export function InsightsContent({
+  showSourceBadge = true,
+  showInsightOfDay = true,
+}: {
+  showSourceBadge?: boolean;
+  showInsightOfDay?: boolean;
+} = {}) {
   const result = useInsights();
-  const { query } = result;
-
   return (
-    <View style={styles.root}>
-      <LinearGradient colors={gradients.navyHero} style={styles.hero}>
-        <SafeAreaView edges={["top"]}>
-          <Text style={styles.heroTitle}>Insights</Text>
-          <Text style={styles.heroSub}>A quick read on how things are going</Text>
-        </SafeAreaView>
-      </LinearGradient>
-
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.pad}
-        refreshControl={
-          <RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} />
-        }
-      >
-        <QueryView result={result} feature="student insights">
-          {(data, source) => <InsightsBody data={data} source={source} />}
-        </QueryView>
-      </ScrollView>
-    </View>
+    <QueryView result={result} feature="student insights">
+      {(data, source) => (
+        <InsightsBody
+          data={data}
+          source={source}
+          showSourceBadge={showSourceBadge}
+          showInsightOfDay={showInsightOfDay}
+        />
+      )}
+    </QueryView>
   );
 }
 
-function InsightsBody({ data, source }: { data: InsightsData; source: "enrolled" | "self" }) {
+function InsightsBody({
+  data,
+  source,
+  showSourceBadge,
+  showInsightOfDay,
+}: {
+  data: InsightsData;
+  source: "enrolled" | "self";
+  showSourceBadge: boolean;
+  showInsightOfDay: boolean;
+}) {
   const insight = data.insight_of_the_day;
   const insightTone =
     insight.tone === "positive" ? colors.green : insight.tone === "warning" ? colors.amber : colors.blue;
@@ -54,24 +59,28 @@ function InsightsBody({ data, source }: { data: InsightsData; source: "enrolled"
     insight.tone === "positive" ? colors.greenBg : insight.tone === "warning" ? colors.amberBg : colors.blueBg;
 
   return (
-    <>
-      <View style={styles.rowBetween}>
-        <SourceBadge source={source} />
-      </View>
+    <View style={{ gap: spacing.lg }}>
+      {showSourceBadge ? (
+        <View style={styles.rowBetween}>
+          <SourceBadge source={source} />
+        </View>
+      ) : null}
 
       {/* Insight of the day */}
-      <Card style={[styles.insightCard, { backgroundColor: insightBg, borderColor: insightBg }]}>
-        <View style={styles.insightHead}>
-          <Ionicons
-            name={insight.tone === "warning" ? "alert-circle" : "sparkles"}
-            size={16}
-            color={insightTone}
-          />
-          <Text style={[styles.insightKicker, { color: insightTone }]}>Insight for you</Text>
-        </View>
-        <Text style={styles.insightTitle}>{insight.title}</Text>
-        <Text style={styles.insightBody}>{insight.body}</Text>
-      </Card>
+      {showInsightOfDay ? (
+        <Card style={[styles.insightCard, { backgroundColor: insightBg, borderColor: insightBg }]}>
+          <View style={styles.insightHead}>
+            <Ionicons
+              name={insight.tone === "warning" ? "alert-circle" : "sparkles"}
+              size={16}
+              color={insightTone}
+            />
+            <Text style={[styles.insightKicker, { color: insightTone }]}>Insight for you</Text>
+          </View>
+          <Text style={styles.insightTitle}>{insight.title}</Text>
+          <Text style={styles.insightBody}>{insight.body}</Text>
+        </Card>
+      ) : null}
 
       {/* Overall + attendance rings */}
       <View style={styles.ringRow}>
@@ -119,9 +128,7 @@ function InsightsBody({ data, source }: { data: InsightsData; source: "enrolled"
       {data.holistic.dimensions.length > 0 ? (
         <Card>
           <SectionHeader title="Holistic development" />
-          {data.holistic.month ? (
-            <Text style={styles.subtle}>{longMonth(data.holistic.month)}</Text>
-          ) : null}
+          {data.holistic.month ? <Text style={styles.subtle}>{longMonth(data.holistic.month)}</Text> : null}
           <View style={{ height: spacing.sm }} />
           {data.holistic.dimensions.map((d) => (
             <BarRow key={d.name} label={d.name} value={d.pct} color={scoreColor(d.pct)} />
@@ -129,10 +136,7 @@ function InsightsBody({ data, source }: { data: InsightsData; source: "enrolled"
         </Card>
       ) : null}
 
-      {/* Subject performance — every subject as a colour-coded bar. Green =
-          strong, red = needs work; the colour tells the story, so there's no
-          arbitrary strengths/focus split. A "needs attention" line calls out
-          only subjects genuinely below par. */}
+      {/* Subject performance */}
       {data.subjects.length > 0 ? (
         <Card>
           <SectionHeader title="Subject performance" />
@@ -157,10 +161,7 @@ function InsightsBody({ data, source }: { data: InsightsData; source: "enrolled"
         </Card>
       ) : null}
 
-      {/* Wellness — BMI + trend + consult/diet/lab counts (guarded for older API) */}
       {data.wellness ? <WellnessCard data={data.wellness} /> : null}
-
-      {/* Learning — courses, certificates, next live class (guarded for older API) */}
       {data.learning ? <LearningCard data={data.learning} /> : null}
 
       {data.overall.exams_counted === 0 && data.attendance.total === 0 ? (
@@ -172,12 +173,12 @@ function InsightsBody({ data, source }: { data: InsightsData; source: "enrolled"
           />
         </Card>
       ) : null}
-    </>
+    </View>
   );
 }
 
-// ── Wellness ─────────────────────────────────────────────────────────────────
 function WellnessCard({ data }: { data: InsightsData["wellness"] }) {
+  const router = useRouter();
   const bmi = data.latest_bmi;
   const cat = bmi ? bmiCategory(bmi.bmi) : null;
   const hasCounts = data.consultations_count + data.diet_plans_count + data.lab_reports_count > 0;
@@ -185,7 +186,7 @@ function WellnessCard({ data }: { data: InsightsData["wellness"] }) {
 
   return (
     <Card style={{ gap: spacing.sm }}>
-      <SectionHeader title="Wellness" />
+      <SectionHeader title="Wellness" action="View" onAction={() => router.push("/(tabs)/health")} />
       {bmi ? (
         <>
           <View style={styles.rowBetween}>
@@ -216,14 +217,14 @@ function WellnessCard({ data }: { data: InsightsData["wellness"] }) {
   );
 }
 
-// ── Learning ─────────────────────────────────────────────────────────────────
 function LearningCard({ data }: { data: InsightsData["learning"] }) {
+  const router = useRouter();
   const live = data.next_live_class;
   if (data.courses_enrolled === 0 && data.certificates === 0 && !live) return null;
 
   return (
     <Card style={{ gap: spacing.sm }}>
-      <SectionHeader title="Learning" />
+      <SectionHeader title="Learning" action="View" onAction={() => router.push("/(tabs)/learning" as Href)} />
       <View style={styles.tileRow}>
         <StatTile label="Courses" value={String(data.courses_enrolled)} icon="school-outline" tint={colors.blueBg} fg={colors.blue} />
         <StatTile label="Certificates" value={String(data.certificates)} icon="ribbon-outline" tint={palette.accent100} fg={palette.accent600} />
@@ -240,50 +241,25 @@ function LearningCard({ data }: { data: InsightsData["learning"] }) {
   );
 }
 
-/** "Jul 2026" — month + year for a "YYYY-MM" string. */
 function monthYear(ym: string): string {
   return `${shortMonth(ym)} ${ym.slice(0, 4)}`;
 }
 
-// Subjects genuinely below par (absolute cutoff, not a rank) — so a class of
-// all-90s flags nothing, and a real weak subject is called out.
 const ATTENTION_BELOW = 50;
 function needsAttention(subjects: { subject: string; percentage: number }[]) {
   return subjects.filter((s) => s.percentage < ATTENTION_BELOW);
 }
 
-/**
- * The span the trend covers, e.g. "Feb – Jul 2026" (or a single "Jul 2026").
- * Points already carry a per-month x-axis label; this states the whole range so
- * a student knows the chart is monthly and where it starts/ends.
- */
 function trendRange(trend: { month: string; percentage: number }[]): string {
   if (trend.length === 0) return "";
   const first = trend[0].month;
   const last = trend[trend.length - 1].month;
   if (first === last) return monthYear(first);
-  // Show the year on both ends when the span crosses a calendar year (a
-  // session can, e.g. Mar 2026 – Feb 2027); otherwise the year once at the end.
   const crossesYear = first.slice(0, 4) !== last.slice(0, 4);
-  return crossesYear
-    ? `${monthYear(first)} – ${monthYear(last)}`
-    : `${shortMonth(first)} – ${monthYear(last)}`;
+  return crossesYear ? `${monthYear(first)} – ${monthYear(last)}` : `${shortMonth(first)} – ${monthYear(last)}`;
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
-  hero: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
-    borderBottomLeftRadius: radius.xl,
-    borderBottomRightRadius: radius.xl,
-  },
-  heroTitle: { color: colors.textInverse, fontSize: 24, fontWeight: "800", marginTop: spacing.sm },
-  heroSub: { color: "#b9c0e0", fontSize: 13, fontWeight: "600", marginTop: 3 },
-
-  scroll: { flex: 1 },
-  pad: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
-
   rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   muted: { ...typography.body, color: colors.textMuted },
   subtle: { ...typography.caption, color: colors.textMuted },

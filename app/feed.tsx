@@ -15,7 +15,7 @@ import { useFeed, useMarkFeedRead } from "@/api/hooks";
 import { Card } from "@/components/ui";
 import { EmptyState, LoadingState, ErrorState } from "@/components/data-ui";
 import { track } from "@/lib/analytics";
-import { CATEGORY_HREF } from "@/lib/notification-routes";
+import { hrefForCategory } from "@/lib/notification-routes";
 import { colors, palette, spacing, radius, typography } from "@/theme";
 import type { FeedCategory, FeedItem } from "@/api/student-types";
 
@@ -141,12 +141,17 @@ const ICON: Record<FeedCategory, { name: keyof typeof Ionicons.glyphMap; tint: s
   certificate: { name: "ribbon-outline", tint: palette.primary50, fg: colors.navy },
 };
 
+// Fallback for a category outside the known union (the feed is fed by
+// student_events emitted from a SEPARATE repo, so an unknown category must not
+// crash the row).
+const DEFAULT_ICON = { name: "notifications-outline" as const, tint: palette.primary50, fg: colors.navy };
+
 function FeedRow({ item }: { item: FeedItem }) {
   const router = useRouter();
-  const ic = ICON[item.category];
+  const ic = ICON[item.category] ?? DEFAULT_ICON;
   return (
     <Pressable
-      onPress={() => router.push(CATEGORY_HREF[item.category])}
+      onPress={() => router.push(hrefForCategory(item.category))}
       style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
     >
       <View style={[styles.rowIc, { backgroundColor: ic.tint }]}>

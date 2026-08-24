@@ -1,27 +1,22 @@
 import { View, Text, StyleSheet, ScrollView, RefreshControl } from "react-native";
 import { useRouter } from "expo-router";
 
-import { useAdvice, useFeedback } from "@/api/hooks";
+import { useAdvice } from "@/api/hooks";
 import { Button, Card, Pill } from "@/components/ui";
 import { QueryView } from "@/components/QueryView";
-import { EmptyState, SectionHeader, ProvenanceBadge } from "@/components/data-ui";
+import { EmptyState } from "@/components/data-ui";
 import { shortDate } from "@/lib/format";
 import { colors, palette, spacing, radius, typography } from "@/theme";
-import type { AdviceRow, TeacherFeedbackRow } from "@/api/student-types";
+import type { AdviceRow } from "@/api/student-types";
 
 /**
- * Advice & Feedback (Phase 3). Two independent data sources: the student's own
- * advice thread with their assigned consultant (writable via /ask-advice) and a
- * read-only stream of teacher feedback. The advice list drives the QueryView
- * boundary; teacher feedback renders inline so a locked/slow feedback resource
- * never blocks the primary thread.
+ * Consultant Advice (Phase 3) — the student's own advice thread with their
+ * assigned consultant (writable via /ask-advice). Consultant feedback lives on
+ * its own screen (/feedback) and is no longer shown here.
  */
 export default function AdviceScreen() {
   const router = useRouter();
   const adviceResult = useAdvice();
-  const feedbackResult = useFeedback();
-
-  const feedback = feedbackResult.locked ? [] : feedbackResult.query.data ?? [];
 
   return (
     <ScrollView
@@ -39,23 +34,6 @@ export default function AdviceScreen() {
       <QueryView result={adviceResult} feature="student.advice">
         {(rows) => <AdviceThread rows={rows} />}
       </QueryView>
-
-      {!feedbackResult.locked ? (
-        <View style={{ gap: spacing.md }}>
-          <SectionHeader title="Consultant feedback" />
-          {feedback.length === 0 ? (
-            <Card>
-              <EmptyState
-                icon="chatbox-ellipses-outline"
-                title="No feedback yet"
-                subtitle="Notes the consultant shares about the work will appear here."
-              />
-            </Card>
-          ) : (
-            feedback.map((f) => <FeedbackCard key={f.id} item={f} />)
-          )}
-        </View>
-      ) : null}
     </ScrollView>
   );
 }
@@ -115,19 +93,6 @@ function AdviceCard({ row }: { row: AdviceRow }) {
   );
 }
 
-function FeedbackCard({ item }: { item: TeacherFeedbackRow }) {
-  return (
-    <Card style={{ gap: spacing.sm }}>
-      <View style={styles.cardHead}>
-        <Text style={styles.feedbackTitle}>{item.subject ?? "Feedback"}</Text>
-        <Text style={styles.date}>{dateLabel(item.created_at)}</Text>
-      </View>
-      {item.feedback ? <Text style={styles.feedbackBody}>{item.feedback}</Text> : null}
-      <ProvenanceBadge name={item.teacher_name} />
-    </Card>
-  );
-}
-
 // ── helpers ──────────────────────────────────────────────────────────────────
 function hasReply(row: AdviceRow): boolean {
   if (row.feedback && row.feedback.trim()) return true;
@@ -174,7 +139,4 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   replyText: { ...typography.body, color: colors.ink },
-
-  feedbackTitle: { ...typography.h2, fontSize: 15, color: colors.ink, flex: 1 },
-  feedbackBody: { ...typography.body, color: colors.textMuted },
 });
