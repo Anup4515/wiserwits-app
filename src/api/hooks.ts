@@ -612,9 +612,10 @@ export function useWorkshops(): SourceInfiniteQueryResult<Paged<WorkshopRow>> {
 
 /** Reminders (appointments / tests). */
 export function useReminders(): SourceQueryResult<ReminderRow[]> {
+  // Reminders is now an always-allowed unified agenda; gating happens per-source
+  // inside the endpoint, so no feature key here.
   return useSourceQuery<ReminderRow[]>({
     key: "reminders",
-    feature: FEATURE.reminders,
     build: () => ({ path: "/api/student/reminders" }),
   });
 }

@@ -595,12 +595,19 @@ export interface ArticleDetail {
   sections: ArticleSection[];
   updated_at: string;
 }
+// Unified reminders/agenda item — derived server-side from live classes,
+// workshops, assignments and consultations, pre-bucketed into today/upcoming/past.
+export type ReminderType = "consultation" | "live_class" | "workshop" | "assignment";
+export type ReminderBucket = "today" | "upcoming" | "past";
+
 export interface ReminderRow {
-  id: number;
+  id: string;                 // composite "type:id"
+  type: ReminderType;
   title: string;
-  description: string | null;
-  appointment_date: string;    // DATE as STRING
-  created_at: string;
+  subtitle: string | null;
+  when: string;               // ISO datetime, or YYYY-MM-DD for date-only sources
+  status: string | null;
+  bucket: ReminderBucket;
 }
 
 // ── Holistic (/holistic, /self/holistic) ─────────────────────────────────────
