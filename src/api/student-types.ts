@@ -387,6 +387,10 @@ export interface DietPlanRow {
 }
 export interface LabReportRow {
   id: number; title: string; report_data: string | null;
+  /** Bare storage relPath (`lab_reports/<file>`) — resolve with resolveFileUrl.
+   * The API has always returned this; the type omitted it, which is why the
+   * screen showed the result text but never the report itself. */
+  file_path: string | null;
   shared_by_id: number | null; created_at: string;
 }
 

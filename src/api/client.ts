@@ -164,6 +164,18 @@ export async function apiRequest<T = unknown>(
   return first.body;
 }
 
+/**
+ * Force a token refresh for the ACTIVE account, coalescing with any refresh
+ * already in flight. `apiRequest` handles its own 401s; this exists for the
+ * requests that DON'T go through it — `<AuthedImage>` hands the Bearer token to
+ * the native image loader, so when that 401s it has no retry path of its own.
+ */
+export async function refreshActiveTokens(): Promise<TokenPair | null> {
+  const studentId = await getActiveStudentId();
+  if (studentId == null) return null;
+  return refreshTokensFor(studentId);
+}
+
 export const api = {
   get: <T>(path: string, opts?: RequestOptions) =>
     apiRequest<T>(path, { ...opts, method: "GET" }),

@@ -1,14 +1,15 @@
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Image, Pressable, Alert } from "react-native";
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useProfile, useDisputeEnrollment } from "@/api/hooks";
 import { Card, Avatar, Pill, Button } from "@/components/ui";
+import { AuthedImage } from "@/components/AuthedImage";
 import { LoadingState, ErrorState } from "@/components/data-ui";
 import { longDate } from "@/lib/format";
-import { env } from "@/lib/env";
 import { colors, palette, spacing, radius, typography } from "@/theme";
 import type { StudentProfile, ProfileEnrollment } from "@/api/student-types";
+import { resolveFileUrl } from "@/lib/download";
 
 /**
  * Profile details — the read-only record a student opens by tapping their
@@ -32,9 +33,7 @@ export default function ProfileDetails() {
   const enr = data.enrollment;
   const fullName = [s.first_name, s.middle_name, s.last_name].filter(Boolean).join(" ") || "—";
   const location = [s.city, s.state, s.country].filter(Boolean).join(", ");
-  const photo = s.profile_image
-    ? s.profile_image.startsWith("http") ? s.profile_image : `${env.apiBaseUrl}${s.profile_image}`
-    : null;
+  const photo = resolveFileUrl(s.profile_image);
 
   return (
     <ScrollView
@@ -54,7 +53,11 @@ export default function ProfileDetails() {
           <Ionicons name="create-outline" size={18} color={colors.navy} />
         </Pressable>
         {photo ? (
-          <Image source={{ uri: photo }} style={styles.photo} />
+          <AuthedImage
+            uri={photo}
+            style={styles.photo}
+            fallback={<Avatar name={fullName} size={72} />}
+          />
         ) : (
           <Avatar name={fullName} size={72} />
         )}

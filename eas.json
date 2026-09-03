@@ -7,6 +7,8 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "channel": "development",
+      "android": { "buildType": "apk" },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "http://localhost:3000"
       }
@@ -14,8 +16,9 @@
     "staging": {
       "distribution": "internal",
       "channel": "staging",
+      "android": { "buildType": "apk" },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://staging.wiserwits.example/"
+        "EXPO_PUBLIC_API_BASE_URL": "https://dev.app.wiserwits.com"
       }
     },
     "production": {

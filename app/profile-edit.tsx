@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Image,
   Pressable,
   Alert,
   ActivityIndicator,
@@ -17,10 +16,11 @@ import * as ImagePicker from "expo-image-picker";
 
 import { useProfile, useUpdateProfile, useUploadProfileImage, type ProfileUpdate } from "@/api/hooks";
 import { Button, Field, Avatar } from "@/components/ui";
+import { AuthedImage } from "@/components/AuthedImage";
 import { LoadingState, ErrorState } from "@/components/data-ui";
-import { env } from "@/lib/env";
 import { colors, spacing, radius, typography } from "@/theme";
 import type { StudentProfile } from "@/api/student-types";
+import { resolveFileUrl } from "@/lib/download";
 
 // The text fields a student can edit (mirrors the backend's ALLOWED_FIELDS).
 const FIELDS: { key: keyof EditFormValues; label: string; keyboard?: "phone-pad" }[] = [
@@ -55,11 +55,7 @@ function formFrom(s: StudentProfile): EditFormValues {
   };
 }
 
-/** Absolute URL for the stored (relative) profile image path. */
-function imageUrl(path: string | null): string | null {
-  if (!path) return null;
-  return path.startsWith("http") ? path : `${env.apiBaseUrl}${path}`;
-}
+
 
 export default function ProfileEdit() {
   const { data, isLoading, isError, error, refetch } = useProfile();
@@ -81,7 +77,7 @@ function EditForm({ student, independent }: { student: StudentProfile; independe
   const uploadImage = useUploadProfileImage();
 
   const fullName = [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(" ");
-  const photo = imageUrl(student.profile_image);
+  const photo = resolveFileUrl(student.profile_image);
 
   const dirty =
     FIELDS.some(({ key }) => form[key] !== initial[key]) ||
@@ -136,7 +132,11 @@ function EditForm({ student, independent }: { student: StudentProfile; independe
         <View style={styles.photoWrap}>
           <Pressable onPress={pickPhoto} disabled={uploadImage.isPending} style={styles.photoPress}>
             {photo ? (
-              <Image source={{ uri: photo }} style={styles.photo} />
+              <AuthedImage
+                uri={photo}
+                style={styles.photo}
+                fallback={<Avatar name={fullName || "?"} size={96} />}
+              />
             ) : (
               <Avatar name={fullName || "?"} size={96} />
             )}

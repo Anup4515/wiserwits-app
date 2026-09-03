@@ -34,6 +34,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   icon: "./assets/images/icon.png",
   scheme: "wiserwits",
   userInterfaceStyle: "automatic",
+
+  // OTA updates (EAS Update). The "fingerprint" policy hashes the native side
+  // of the app, so a JS-only update can never land on a binary it is
+  // incompatible with: any native change (new native module, Expo SDK bump, or
+  // an edit to the native fields below — permissions, icon, splash, plugins)
+  // shifts the fingerprint and needs a fresh build instead of an update.
+  runtimeVersion: { policy: "fingerprint" },
+  updates: {
+    url: "https://u.expo.dev/efa95fb0-3825-4931-90cc-2d5f4331286b",
+  },
   ios: {
     supportsTablet: false,
     bundleIdentifier: "com.wiserwits.studentapp",

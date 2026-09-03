@@ -11,7 +11,7 @@ import { SectionHeader, EmptyState } from "@/components/data-ui";
 import { ProgressRing, BarRow } from "@/components/charts";
 import { t } from "@/lib/copy";
 import { longMonth, longDate, pct, num, scoreColor, gradeColor } from "@/lib/format";
-import { downloadAndShare } from "@/lib/download";
+import { downloadAndShare, resolveFileUrl } from "@/lib/download";
 import { colors, palette, spacing, radius, typography } from "@/theme";
 import type { ReportCardRow, SelfReportData } from "@/api/student-types";
 
@@ -85,9 +85,9 @@ function EnrolledReports({ cards }: { cards: ReportCardRow[] }) {
             </View>
           ) : null}
 
-          {c.pdf_url ? (
+          {resolveFileUrl(c.pdf_url) ? (
             <PdfDownloadButton
-              url={c.pdf_url}
+              url={resolveFileUrl(c.pdf_url) as string}
               filename={`report-${c.reference_month ?? c.type}.pdf`}
             />
           ) : null}

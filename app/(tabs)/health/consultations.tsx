@@ -3,13 +3,21 @@ import { useRouter } from "expo-router";
 
 import { useConsultations } from "@/api/hooks";
 import { Button } from "@/components/ui";
+import { QueryView } from "@/components/QueryView";
 import { ConsultationsSection } from "@/features/health/sections";
 import { colors, spacing } from "@/theme";
 
-/** Consultations screen — "Book consultation" (opens the booking modal) + list. */
+/**
+ * Consultations screen — "Book consultation" (opens the booking modal) + list.
+ *
+ * See labs.tsx: QueryView rather than `query.data ?? []`, so a failed or
+ * plan-locked fetch shows an error/upsell instead of masquerading as "no
+ * consultations yet".
+ */
 export default function ConsultationsScreen() {
   const router = useRouter();
-  const { query } = useConsultations();
+  const result = useConsultations();
+  const { query } = result;
 
   return (
     <ScrollView
@@ -20,7 +28,9 @@ export default function ConsultationsScreen() {
       }
     >
       <Button label="Schedule Consultation" onPress={() => router.push("/book-consultation")} />
-      <ConsultationsSection rows={query.data ?? []} />
+      <QueryView result={result} feature="student.health" loadingLabel="Loading consultations…">
+        {(rows) => <ConsultationsSection rows={rows} />}
+      </QueryView>
     </ScrollView>
   );
 }

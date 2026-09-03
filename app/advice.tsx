@@ -76,7 +76,7 @@ function AdviceCard({ row }: { row: AdviceRow }) {
         <View style={[styles.bubble, styles.ownBubble]}>
           <Text style={styles.ownText}>{row.message ?? "—"}</Text>
           {row.preferred_time ? (
-            <Text style={styles.ownMeta}>Preferred: {row.preferred_time}</Text>
+            <Text style={styles.ownMeta}>Date: {preferredDate(row.preferred_time)}</Text>
           ) : null}
         </View>
       </View>
@@ -104,6 +104,18 @@ function hasReply(row: AdviceRow): boolean {
 function dateLabel(ts: string | null | undefined): string {
   if (!ts) return "";
   return shortDate(ts.slice(0, 10));
+}
+
+/**
+ * `preferred_time` is free text and reaches us in two shapes: /ask-advice
+ * writes "Mon, 4 Aug · 10:30 AM", while the web dashboard's datetime-local
+ * input writes "2026-09-05T10:30". Show the calendar date only, and fall back
+ * to the raw string when it is neither (shortDate returns its input unparsed).
+ */
+function preferredDate(raw: string): string {
+  const dot = raw.indexOf("·");
+  if (dot !== -1) return raw.slice(0, dot).trim();
+  return shortDate(raw);
 }
 
 const styles = StyleSheet.create({

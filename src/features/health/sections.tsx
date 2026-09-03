@@ -321,23 +321,54 @@ export function LabReportsSection({ rows }: { rows: LabReportRow[] }) {
     <View style={groupStyle}>
       <SectionHeader title={`Reports · ${rows.length}`} />
       {rows.map((r) => (
-        <ListCard key={r.id}>
-          <CardHead
-            left={<DateChip iso={r.created_at} />}
-            title={r.title}
-            meta={[{ icon: "document-text-outline", text: "Shared by consultant" }]}
-            right={<IconTile icon="flask-outline" tone="amber" />}
-          />
-          {/* The result text IS the report — give it its own readable block
-              rather than a two-line muted subtitle. */}
-          {r.report_data ? (
-            <CardBlock>
-              <Text style={styles.resultText}>{r.report_data}</Text>
-            </CardBlock>
-          ) : null}
-        </ListCard>
+        <LabReportItem key={r.id} report={r} />
       ))}
     </View>
+  );
+}
+
+function LabReportItem({ report }: { report: LabReportRow }) {
+  const [downloading, setDownloading] = useState(false);
+  // The consultant attaches the actual PDF/scan; the API returns its path but
+  // the screen had no way to open it, so a student could read the summary line
+  // and never the report.
+  const fileUrl = resolveFileUrl(report.file_path);
+
+  async function download() {
+    if (!fileUrl) return;
+    setDownloading(true);
+    await downloadAndShare(fileUrl, report.title || "lab-report");
+    setDownloading(false);
+  }
+
+  return (
+    <ListCard>
+      <CardHead
+        left={<DateChip iso={report.created_at} />}
+        title={report.title}
+        meta={[{ icon: "document-text-outline", text: "Shared by consultant" }]}
+        right={<IconTile icon="flask-outline" tone="amber" />}
+      />
+      {/* The result text IS the report — give it its own readable block
+          rather than a two-line muted subtitle. */}
+      {report.report_data ? (
+        <CardBlock>
+          <Text style={styles.resultText}>{report.report_data}</Text>
+        </CardBlock>
+      ) : null}
+      {fileUrl ? (
+        <CardFooter
+          right={
+            <CardAction
+              icon="download-outline"
+              label="Download"
+              loading={downloading}
+              onPress={download}
+            />
+          }
+        />
+      ) : null}
+    </ListCard>
   );
 }
 
