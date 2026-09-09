@@ -10,6 +10,8 @@ import {
   type ViewProps,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+
+import { AuthedImage } from "@/components/AuthedImage";
 import { Ionicons } from "@expo/vector-icons";
 import { palette, colors, gradients, spacing, radius, shadow, typography } from "@/theme";
 
@@ -178,8 +180,25 @@ export function Brand({ size = 46, withName = true }: { size?: number; withName?
 }
 
 /** Gold-gradient circular avatar with an initial (mock `.kid .av` / `.avatar-lg`). */
-export function Avatar({ name, size = 40 }: { name: string; size?: number }) {
-  return (
+/**
+ * Initials avatar, or the student's photo when one is passed.
+ *
+ * `uri` must already be absolute (run the stored path through
+ * `resolveFileUrl`). Photos live behind the authenticated /api/files proxy, so
+ * they go through <AuthedImage> — a plain <Image> sends no Authorization header
+ * and renders an empty circle. The initials double as the placeholder while the
+ * headers resolve and as the fallback if the image fails.
+ */
+export function Avatar({
+  name,
+  size = 40,
+  uri,
+}: {
+  name: string;
+  size?: number;
+  uri?: string | null;
+}) {
+  const initials = (
     <LinearGradient
       colors={gradients.goldSoft}
       start={{ x: 0, y: 0 }}
@@ -190,6 +209,17 @@ export function Avatar({ name, size = 40 }: { name: string; size?: number }) {
         {name?.charAt(0).toUpperCase() || "?"}
       </Text>
     </LinearGradient>
+  );
+
+  if (!uri) return initials;
+
+  return (
+    <AuthedImage
+      uri={uri}
+      fallback={initials}
+      contentFit="cover"
+      style={{ width: size, height: size, borderRadius: size / 2 }}
+    />
   );
 }
 

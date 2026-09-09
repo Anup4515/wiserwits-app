@@ -19,7 +19,7 @@ import {
 } from "@/components/list-card";
 import { SectionHeader, EmptyState } from "@/components/data-ui";
 import { TrendChart } from "@/components/charts";
-import { downloadAndShare, resolveFileUrl } from "@/lib/download";
+import { downloadAndSave, resolveFileUrl } from "@/lib/download";
 import { colors, spacing, radius, typography } from "@/theme";
 import type {
   HealthData,
@@ -270,7 +270,7 @@ function DietPlanItem({ plan }: { plan: DietPlanRow }) {
   async function download() {
     if (!fileUrl) return;
     setDownloading(true);
-    await downloadAndShare(fileUrl, plan.title || "diet-plan");
+    await downloadAndSave(fileUrl, plan.title || "diet-plan");
     setDownloading(false);
   }
 
@@ -337,7 +337,7 @@ function LabReportItem({ report }: { report: LabReportRow }) {
   async function download() {
     if (!fileUrl) return;
     setDownloading(true);
-    await downloadAndShare(fileUrl, report.title || "lab-report");
+    await downloadAndSave(fileUrl, report.title || "lab-report");
     setDownloading(false);
   }
 

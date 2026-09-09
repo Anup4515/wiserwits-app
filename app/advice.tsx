@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 import { useAdvice } from "@/api/hooks";
-import { downloadAndShare, resolveFileUrl } from "@/lib/download";
+import { downloadAndSave, resolveFileUrl } from "@/lib/download";
 import { Button, Card, Pill } from "@/components/ui";
 import { QueryView } from "@/components/QueryView";
 import { EmptyState } from "@/components/data-ui";
@@ -20,7 +20,7 @@ import type { AdviceRow } from "@/api/student-types";
  * `file_path` is written ONLY by the consultant when they reply, so the
  * attachment belongs to the reply bubble, never the student's own message. It
  * is a bare storage relPath, so it needs resolveFileUrl() plus the Bearer token
- * downloadAndShare() attaches — /api/files 401s without it.
+ * downloadAndSave() attaches — /api/files 401s without it.
  */
 export default function AdviceScreen() {
   const router = useRouter();
@@ -114,7 +114,7 @@ function AttachmentLink({ url, path }: { url: string; path: string | null }) {
   async function download() {
     setDownloading(true);
     const ext = path?.split("?")[0].match(/\.[a-z0-9]+$/i)?.[0] ?? "";
-    await downloadAndShare(url, `advice-attachment${ext.toLowerCase()}`);
+    await downloadAndSave(url, `advice-attachment${ext.toLowerCase()}`);
     setDownloading(false);
   }
 

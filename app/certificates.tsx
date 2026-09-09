@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, RefreshControl } from "react-native
 import { Ionicons } from "@expo/vector-icons";
 
 import { useCertificates } from "@/api/hooks";
-import { downloadAndShare, resolveFileUrl } from "@/lib/download";
+import { downloadAndSave, resolveFileUrl } from "@/lib/download";
 import { QueryListView } from "@/components/QueryView";
 import { Card, Button } from "@/components/ui";
 import { EmptyState } from "@/components/data-ui";
@@ -15,7 +15,7 @@ import type { CertificateRow } from "@/api/student-types";
  * each row shows its title and issued date with a one-tap download.
  *
  * `file_url` is a BARE storage relPath from the API, so it goes through
- * `resolveFileUrl()` and then `downloadAndShare()`, which attaches the Bearer
+ * `resolveFileUrl()` and then `downloadAndSave()`, which attaches the Bearer
  * token /api/files requires. It used to go straight to `Linking.openURL`, which
  * could only ever answer "this link can't be opened" — and handing the resolved
  * URL to the device browser wouldn't work either, since that carries no token
@@ -74,7 +74,7 @@ function CertificateCard({ row }: { row: CertificateRow }) {
     // .webp), so keep the stored file's own extension — naming a JPEG ".pdf"
     // hands the share sheet to a PDF viewer that then can't open it.
     const ext = row.file_url?.split("?")[0].match(/\.[a-z0-9]+$/i)?.[0] ?? "";
-    await downloadAndShare(fileUrl, `${row.title || "certificate"}${ext.toLowerCase()}`);
+    await downloadAndSave(fileUrl, `${row.title || "certificate"}${ext.toLowerCase()}`);
     setDownloading(false);
   }
 

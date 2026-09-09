@@ -1,8 +1,9 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
-import { Alert } from "react-native";
+import { Alert, Platform } from "react-native";
 
 import { env } from "@/lib/env";
+import { storage } from "@/auth/secure-storage";
 import { getActiveStudentId, getSessionFor } from "@/auth/token-store";
 
 /**
@@ -61,13 +62,155 @@ function safeName(name: string, fallback = "download"): string {
   return cleaned || fallback;
 }
 
+/** Where the student's granted SAF folder lives between launches. */
+const SAF_DIR_KEY = "downloads-saf-directory";
+
 /**
- * Download a remote file into the app cache and hand it to the OS share sheet,
- * so the student can save it (Files / Photos) or open it in another app for
- * offline use. Surfaces its own alerts on failure and returns whether it
- * succeeded. `onProgress` reports 0–1 for large files (e.g. course videos).
+ * Ceiling for the Save-to-folder path.
+ *
+ * SAF can only be written through `writeAsStringAsync`, so the file has to make
+ * a base64 round-trip through a JS string (~+33% on top of the raw bytes).
+ * That is fine for the documents this app hands out — certificates, report
+ * cards, diet plans, notices — but would OOM on a course video, so anything
+ * larger falls back to the share sheet. `copyAsync` is not an escape hatch:
+ * expo-file-system supports SAF as a copy *source* only; the destination is
+ * resolved with `toUri.toFile()`, which a content:// URI is not.
  */
-export async function downloadAndShare(
+const SAF_MAX_BYTES = 25 * 1024 * 1024;
+
+const MIME_BY_EXT: Record<string, string> = {
+  pdf: "application/pdf",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  csv: "text/csv",
+  txt: "text/plain",
+  zip: "application/zip",
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  mp3: "audio/mpeg",
+};
+
+/** `createFileAsync` wants the base name only — Android appends the extension
+ *  that matches the MIME type, so passing "a.pdf" would yield "a.pdf.pdf". */
+function splitName(filename: string): { base: string; mime: string; known: boolean } {
+  const dot = filename.lastIndexOf(".");
+  const ext = dot > 0 ? filename.slice(dot + 1).toLowerCase() : "";
+  const mime = MIME_BY_EXT[ext];
+  return {
+    // With an unrecognised extension we keep the whole name and let Android do
+    // what it likes with the octet-stream default, rather than silently
+    // truncating a meaningful suffix.
+    base: mime ? filename.slice(0, dot) : filename,
+    mime: mime ?? "application/octet-stream",
+    known: !!mime,
+  };
+}
+
+async function writeIntoFolder(dirUri: string, cacheUri: string, filename: string): Promise<void> {
+  const { base, mime } = splitName(filename);
+  const target = await FileSystem.StorageAccessFramework.createFileAsync(dirUri, base, mime);
+  const b64 = await FileSystem.readAsStringAsync(cacheUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  await FileSystem.writeAsStringAsync(target, b64, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+}
+
+/**
+ * Android: write the downloaded file into a folder the student picked once
+ * (the picker opens on Downloads), instead of pushing it through the share
+ * sheet. The grant is persisted, so the picker appears on the first download
+ * only.
+ *
+ * Returns "fallback" when the share sheet should handle it instead — the file
+ * is too large to base64, the student declined the folder prompt, or SAF
+ * errored. The caller still has a downloaded file either way, so no path here
+ * loses the download.
+ */
+async function saveToFolder(cacheUri: string, filename: string): Promise<true | "fallback"> {
+  const info = await FileSystem.getInfoAsync(cacheUri);
+  if (info.exists && info.size > SAF_MAX_BYTES) return "fallback";
+
+  const SAF = FileSystem.StorageAccessFramework;
+
+  async function grantFolder(): Promise<string | null> {
+    const perm = await SAF.requestDirectoryPermissionsAsync(
+      SAF.getUriForDirectoryInRoot("Download"),
+    );
+    if (!perm.granted) return null;
+    await storage.setItem(SAF_DIR_KEY, perm.directoryUri);
+    return perm.directoryUri;
+  }
+
+  let dir = await storage.getItem(SAF_DIR_KEY);
+  if (!dir) {
+    dir = await grantFolder();
+    if (!dir) return "fallback";
+  }
+
+  try {
+    await writeIntoFolder(dir, cacheUri, filename);
+  } catch {
+    // A stored grant goes stale when the folder is deleted or the permission is
+    // revoked in system settings. Drop it and ask once more before giving up.
+    await storage.removeItem(SAF_DIR_KEY);
+    const retryDir = await grantFolder();
+    if (!retryDir) return "fallback";
+    try {
+      await writeIntoFolder(retryDir, cacheUri, filename);
+    } catch {
+      return "fallback";
+    }
+  }
+
+  Alert.alert("Saved", `"${filename}" was saved to your downloads folder.`);
+  return true;
+}
+
+/**
+ * Guards against issuing overlapping share requests from JS.
+ *
+ * expo-sharing's Android module keeps ONE `pendingPromise` and clears it only
+ * in `OnActivityResult`. If that callback never arrives — the chooser dismissed
+ * in a way that delivers no result, or the activity recreated while the sheet
+ * was up — the flag stays set for the rest of the process and EVERY later
+ * `shareAsync` rejects with "Another share request is being processed now".
+ * Nothing in JS can reset it; only relaunching the app does. So we avoid
+ * stacking our own calls, and report the state honestly when it happens rather
+ * than blaming the download, which by then has already succeeded.
+ */
+let sharePending = false;
+
+/** True for expo-sharing's "a share is already in flight" rejection. */
+function isShareInProgress(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e ?? "");
+  return /another share request/i.test(msg);
+}
+
+/**
+ * Download a remote file and put it somewhere the student can actually find it.
+ *
+ * Android saves straight into a folder they pick once (the picker opens on
+ * Downloads) via the Storage Access Framework — which is what "Download" is
+ * expected to mean, and it sidesteps expo-sharing's one-shot `pendingPromise`
+ * that could wedge every later download until the app was relaunched. iOS, and
+ * any Android case SAF can't take (over `SAF_MAX_BYTES`, or the folder prompt
+ * declined), still go through the share sheet.
+ *
+ * Surfaces its own alerts on failure and returns whether it succeeded.
+ * `onProgress` reports 0–1 for large files (e.g. course videos).
+ */
+export async function downloadAndSave(
   url: string,
   filename: string,
   onProgress?: (fraction: number) => void,
@@ -124,10 +267,46 @@ export async function downloadAndShare(
       return false;
     }
 
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(result.uri);
-    } else {
+    if (Platform.OS === "android") {
+      const saved = await saveToFolder(result.uri, safeName(filename));
+      if (saved === true) return true;
+    }
+
+    if (!(await Sharing.isAvailableAsync())) {
       Alert.alert("Saved", "The file has been downloaded to the app.");
+      return true;
+    }
+
+    if (sharePending) {
+      Alert.alert(
+        "Share sheet already open",
+        "Finish or close the open share sheet, then try again.",
+      );
+      return false;
+    }
+
+    // The file is on disk from here on, so a share failure is never a download
+    // failure — say so, instead of the misleading "Download failed" this used
+    // to raise through the outer catch.
+    sharePending = true;
+    try {
+      await Sharing.shareAsync(result.uri);
+    } catch (e) {
+      if (isShareInProgress(e)) {
+        Alert.alert(
+          "Can't open the share sheet",
+          "The file downloaded, but Android still has an earlier share open. " +
+            "Close the app completely and reopen it, then tap download again.",
+        );
+      } else {
+        Alert.alert(
+          "Couldn't share the file",
+          e instanceof Error ? e.message : "The file downloaded but couldn't be opened.",
+        );
+      }
+      return false;
+    } finally {
+      sharePending = false;
     }
     return true;
   } catch (e) {

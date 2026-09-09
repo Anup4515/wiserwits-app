@@ -18,6 +18,7 @@ import {
 import { useApiMutation } from "@/api/mutations";
 import { api } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
+import { getActiveStudentId, getSessionFor, updateUser } from "@/auth/token-store";
 import { useEnrollment } from "@/features/enrollment/EnrollmentContext";
 import {
   useMutation,
@@ -175,9 +176,21 @@ export function useUploadProfileImage() {
       if (res.error) throw new Error(res.error);
       return res.data as { profile_image: string | null };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       void qc.invalidateQueries({ queryKey: ["profile"] });
       void qc.invalidateQueries({ queryKey: ["dashboard"] });
+      // The home avatar reads the CACHED session user, not a query — and that
+      // copy was only rewritten on a token refresh, so a freshly uploaded photo
+      // showed on Profile (which refetches) while Home kept the old one until
+      // the next sign-in. Push the new path into the store; updateUser()
+      // notifies AuthContext, which re-reads and re-renders.
+      void (async () => {
+        const id = await getActiveStudentId();
+        if (id == null) return;
+        const session = await getSessionFor(id);
+        if (!session?.user) return;
+        await updateUser(id, { ...session.user, profile_image: data.profile_image });
+      })();
     },
   });
 }

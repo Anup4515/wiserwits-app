@@ -8,6 +8,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { useDashboard, useTimetable } from "@/api/hooks";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Avatar, Card } from "@/components/ui";
+import { resolveFileUrl } from "@/lib/download";
 import { SectionHeader, SourceBadge, EmptyState } from "@/components/data-ui";
 import { t } from "@/lib/copy";
 import { time12, pct, scoreColor, gradeColor, isGraded, shortMonth } from "@/lib/format";
@@ -184,7 +185,7 @@ export default function Home() {
                 accessibilityRole="button"
                 accessibilityLabel="View profile"
               >
-                <Avatar name={user?.name ?? "?"} size={44} />
+                <Avatar name={user?.name ?? "?"} size={44} uri={resolveFileUrl(user?.profile_image)} />
               </Pressable>
               <View style={{ flex: 1 }}>
                 <Text style={styles.eyebrow} numberOfLines={1}>

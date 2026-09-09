@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 
 import { useCourse, useCourseReviews, useSubmitCourseReview } from "@/api/hooks";
-import { downloadAndShare, resolveFileUrl } from "@/lib/download";
+import { downloadAndSave, resolveFileUrl } from "@/lib/download";
 import { AuthedImage } from "@/components/AuthedImage";
 import { VideoPlayerModal } from "@/components/VideoPlayerModal";
 import { QueryView } from "@/components/QueryView";
@@ -24,7 +24,7 @@ const FEEDBACK_MAX = 1000;
  * sheet. Everything here is a BARE storage relPath from the API, so it has to
  * go through `resolveFileUrl()` first — the screen used to hand those paths
  * straight to `Linking.openURL`, which could only ever answer "this link can't
- * be opened", and to `downloadAndShare`, which failed for the same reason.
+ * be opened", and to `downloadAndSave`, which failed for the same reason.
  * Handing the resolved URL to the device browser wouldn't work either: it
  * carries no Bearer token, so /api/files would 401. Both paths below attach the
  * token themselves.
@@ -294,7 +294,7 @@ function ContentRow({
   async function download() {
     if (!url) return;
     setDownloading(true);
-    await downloadAndShare(url, label);
+    await downloadAndSave(url, label);
     setDownloading(false);
   }
 

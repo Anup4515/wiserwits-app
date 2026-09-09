@@ -6,7 +6,7 @@ import { useNotices } from "@/api/hooks";
 import { QueryListView } from "@/components/QueryView";
 import { Card } from "@/components/ui";
 import { EmptyState } from "@/components/data-ui";
-import { downloadAndShare, resolveFileUrl } from "@/lib/download";
+import { downloadAndSave, resolveFileUrl } from "@/lib/download";
 import { colors, palette, spacing, radius, typography } from "@/theme";
 import type { NoticeRow } from "@/api/student-types";
 
@@ -18,7 +18,7 @@ import type { NoticeRow } from "@/api/student-types";
  * class — so nothing is decided here.
  *
  * A notice can carry a PDF. Its `attachment_path` is a bare storage relPath, so
- * it goes through `resolveFileUrl()` and then `downloadAndShare()`, which
+ * it goes through `resolveFileUrl()` and then `downloadAndSave()`, which
  * attaches the student's token: `/api/files/*` is authenticated, and handing the
  * URL to the device browser instead would come back 401.
  */
@@ -70,7 +70,7 @@ function NoticeCard({ row }: { row: NoticeRow }) {
   async function download() {
     if (!fileUrl) return;
     setDownloading(true);
-    await downloadAndShare(fileUrl, row.attachment_name ?? `${row.title}.pdf`);
+    await downloadAndSave(fileUrl, row.attachment_name ?? `${row.title}.pdf`);
     setDownloading(false);
   }
 

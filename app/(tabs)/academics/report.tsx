@@ -11,7 +11,7 @@ import { SectionHeader, EmptyState } from "@/components/data-ui";
 import { ProgressRing, BarRow } from "@/components/charts";
 import { t } from "@/lib/copy";
 import { longMonth, longDate, pct, num, scoreColor, gradeColor } from "@/lib/format";
-import { downloadAndShare, resolveFileUrl } from "@/lib/download";
+import { downloadAndSave, resolveFileUrl } from "@/lib/download";
 import { colors, palette, spacing, radius, typography } from "@/theme";
 import type { ReportCardRow, SelfReportData } from "@/api/student-types";
 
@@ -99,7 +99,7 @@ function EnrolledReports({ cards }: { cards: ReportCardRow[] }) {
 
 /**
  * Downloads the report PDF to the device and opens the native share/save sheet.
- * Uses downloadAndShare (auth-aware for same-host URLs; works with the public
+ * Uses downloadAndSave (auth-aware for same-host URLs; works with the public
  * report URLs too) instead of Linking.openURL, which can't save the file.
  */
 function PdfDownloadButton({ url, filename }: { url: string; filename: string }) {
@@ -110,7 +110,7 @@ function PdfDownloadButton({ url, filename }: { url: string; filename: string })
       onPress={async () => {
         setDownloading(true);
         try {
-          await downloadAndShare(url, filename);
+          await downloadAndSave(url, filename);
         } finally {
           setDownloading(false);
         }
