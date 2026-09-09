@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -7,11 +7,12 @@ import {
   Pressable,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-import { useFeed, useMarkFeedRead } from "@/api/hooks";
+import { useDeleteFeedItem, useFeed, useMarkFeedRead } from "@/api/hooks";
 import { Card } from "@/components/ui";
 import { EmptyState, LoadingState, ErrorState } from "@/components/data-ui";
 import { track } from "@/lib/analytics";
@@ -33,6 +34,23 @@ import type { FeedCategory, FeedItem } from "@/api/student-types";
 export default function FeedScreen() {
   const { query } = useFeed();
   const markRead = useMarkFeedRead();
+  const deleteItem = useDeleteFeedItem();
+
+  // Confirm first: the trash sits inside a scrolling list, where a stray tap is
+  // easy and the delete has no undo.
+  const onDelete = useCallback(
+    (item: FeedItem) => {
+      Alert.alert("Delete notification?", item.title, [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => deleteItem.mutate(item.id),
+        },
+      ]);
+    },
+    [deleteItem]
+  );
 
   // Flatten every loaded page before grouping, so a day that straddles a page
   // boundary still renders as one group rather than two.
@@ -83,7 +101,7 @@ export default function FeedScreen() {
           <Text style={styles.dayLabel}>{g.label}</Text>
           <Card style={{ gap: spacing.md }}>
             {g.items.map((item) => (
-              <FeedRow key={item.id} item={item} />
+              <FeedRow key={item.id} item={item} onDelete={onDelete} />
             ))}
           </Card>
         </View>
@@ -139,6 +157,7 @@ const ICON: Record<FeedCategory, { name: keyof typeof Ionicons.glyphMap; tint: s
   live_class: { name: "videocam-outline", tint: palette.accent100, fg: palette.accent600 },
   workshop: { name: "easel-outline", tint: colors.greenBg, fg: colors.green },
   certificate: { name: "ribbon-outline", tint: palette.primary50, fg: colors.navy },
+  notice: { name: "megaphone-outline", tint: palette.accent100, fg: palette.accent600 },
 };
 
 // Fallback for a category outside the known union (the feed is fed by
@@ -146,26 +165,46 @@ const ICON: Record<FeedCategory, { name: keyof typeof Ionicons.glyphMap; tint: s
 // crash the row).
 const DEFAULT_ICON = { name: "notifications-outline" as const, tint: palette.primary50, fg: colors.navy };
 
-function FeedRow({ item }: { item: FeedItem }) {
+function FeedRow({
+  item,
+  onDelete,
+}: {
+  item: FeedItem;
+  onDelete: (item: FeedItem) => void;
+}) {
   const router = useRouter();
   const ic = ICON[item.category] ?? DEFAULT_ICON;
   return (
-    <Pressable
-      onPress={() => router.push(hrefForCategory(item.category))}
-      style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
-    >
-      <View style={[styles.rowIc, { backgroundColor: ic.tint }]}>
-        <Ionicons name={ic.name} size={17} color={ic.fg} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <View style={styles.rowHead}>
-          <Text style={styles.rowTitle} numberOfLines={1}>{item.title}</Text>
-          {item.unread ? <View style={styles.dot} /> : null}
+    // The trash is a sibling of the row Pressable's content, not nested inside
+    // another Pressable's press target — RN would otherwise route the tap to
+    // whichever responder wins, and the row would navigate on a delete tap.
+    <View style={styles.row}>
+      <Pressable
+        onPress={() => router.push(hrefForCategory(item.category))}
+        style={({ pressed }) => [styles.rowMain, pressed && { opacity: 0.7 }]}
+      >
+        <View style={[styles.rowIc, { backgroundColor: ic.tint }]}>
+          <Ionicons name={ic.name} size={17} color={ic.fg} />
         </View>
-        {item.body ? <Text style={styles.rowBody} numberOfLines={2}>{item.body}</Text> : null}
-      </View>
-      <Text style={styles.rowTime}>{timeLabel(item.ts)}</Text>
-    </Pressable>
+        <View style={{ flex: 1 }}>
+          <View style={styles.rowHead}>
+            <Text style={styles.rowTitle} numberOfLines={1}>{item.title}</Text>
+            {item.unread ? <View style={styles.dot} /> : null}
+          </View>
+          {item.body ? <Text style={styles.rowBody} numberOfLines={2}>{item.body}</Text> : null}
+        </View>
+        <Text style={styles.rowTime}>{timeLabel(item.ts)}</Text>
+      </Pressable>
+      <Pressable
+        onPress={() => onDelete(item)}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`Delete notification: ${item.title}`}
+        style={({ pressed }) => [styles.rowDelete, pressed && { opacity: 0.5 }]}
+      >
+        <Ionicons name="trash-outline" size={16} color={colors.textMuted} />
+      </Pressable>
+    </View>
   );
 }
 
@@ -223,7 +262,9 @@ const styles = StyleSheet.create({
   footer: { paddingVertical: spacing.lg, alignItems: "center" },
   dayLabel: { ...typography.label, color: colors.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
 
-  row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  row: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  rowMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.md },
+  rowDelete: { width: 28, height: 28, alignItems: "center", justifyContent: "center" },
   rowIc: {
     width: 36, height: 36, borderRadius: radius.md,
     alignItems: "center", justifyContent: "center",

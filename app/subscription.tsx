@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  Alert,
+  Pressable,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -262,6 +270,10 @@ function PlanCard({
   const inheritsAll =
     prevPlan != null && prevFeats.length > 0 && prevFeats.every((f) => feats.includes(f));
   const shown = inheritsAll && additions.length > 0 ? additions : feats;
+  // "+ N more" used to be plain text, so a student comparing plans BEFORE
+  // subscribing could never read past the sixth feature. It is a toggle now.
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? shown : shown.slice(0, MAX_FEATURES);
 
   return (
     <Card style={[styles.planCard, isCurrent && styles.planCardCurrent]}>
@@ -288,7 +300,7 @@ function PlanCard({
           {inheritsAll && additions.length > 0 ? (
             <Text style={styles.inheritLine}>Everything in {prevPlan!.name}, plus:</Text>
           ) : null}
-          {shown.slice(0, MAX_FEATURES).map((label, i) => {
+          {visible.map((label, i) => {
             const highlight = addedSet.has(label);
             return (
               <View key={i} style={styles.featureRow}>
@@ -307,7 +319,20 @@ function PlanCard({
             );
           })}
           {shown.length > MAX_FEATURES ? (
-            <Text style={styles.moreText}>+ {shown.length - MAX_FEATURES} more</Text>
+            <Pressable
+              onPress={() => setExpanded((e) => !e)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityState={{ expanded }}
+            >
+              <Text style={styles.moreText}>
+                {expanded
+                  ? "Show fewer features"
+                  : `+ ${shown.length - MAX_FEATURES} more feature${
+                      shown.length - MAX_FEATURES === 1 ? "" : "s"
+                    }`}
+              </Text>
+            </Pressable>
           ) : null}
         </View>
       ) : null}
@@ -412,7 +437,13 @@ const styles = StyleSheet.create({
   featureRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   featureText: { ...typography.label, color: colors.text, flex: 1, fontWeight: "600" },
   featureTextNew: { color: palette.accent600, fontWeight: "800" },
-  moreText: { ...typography.caption, color: colors.textMuted, marginLeft: 24, marginTop: 2 },
+  moreText: {
+    ...typography.caption,
+    color: colors.navy,
+    fontWeight: "600",
+    marginLeft: 24,
+    marginTop: 2,
+  },
 
   noteRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm, paddingHorizontal: spacing.xs },
   noteText: { ...typography.caption, color: colors.textMuted, flex: 1 },

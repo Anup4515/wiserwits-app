@@ -9,7 +9,10 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "build:staging": "eas build -p android --profile staging",
+    "update:staging": "EXPO_PUBLIC_API_BASE_URL=https://dev.app.wiserwits.com eas update --branch staging",
+    "fingerprint:staging": "EXPO_PUBLIC_API_BASE_URL=https://dev.app.wiserwits.com npx expo-updates fingerprint:generate --platform android"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -34,6 +37,7 @@
     "expo-status-bar": "~55.0.6",
     "expo-system-ui": "~55.0.19",
     "expo-updates": "~55.0.30",
+    "expo-video": "~55.0.21",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-hook-form": "^7.80.0",

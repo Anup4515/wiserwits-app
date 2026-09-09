@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
+import { AuthedImage } from "@/components/AuthedImage";
+import { resolveFileUrl } from "@/lib/download";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -242,8 +243,8 @@ function CourseCard({
         disabled={!onOpen}
         style={styles.courseHead}
       >
-        {course.image ? (
-          <Image source={{ uri: course.image }} style={styles.thumb} contentFit="cover" />
+        {resolveFileUrl(course.image) ? (
+          <AuthedImage uri={resolveFileUrl(course.image) as string} style={styles.thumb} contentFit="cover" />
         ) : (
           <View style={[styles.thumb, styles.thumbFallback]}>
             <Ionicons name="book-outline" size={22} color={colors.navy} />

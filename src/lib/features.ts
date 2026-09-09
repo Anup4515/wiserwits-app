@@ -23,6 +23,9 @@ export const ALWAYS_ALLOWED = new Set<string>([
   "student.articles",
   "student.bmi",
   "student.courses",
+  // School communication, not a paid feature — mirrors the backend's
+  // ALWAYS_ALLOWED so a lapsed plan never hides a fee or exam notice.
+  "student.notices",
 ]);
 
 /** The plan-gated feature keys the mobile app references (Phase 2 + beyond). */
@@ -42,6 +45,7 @@ export const FEATURE = {
   feedback: "student.feedback",
   health: "student.health",
   reminders: "student.reminders",
+  notices: "student.notices",
 } as const;
 
 export type FeatureKey = (typeof FEATURE)[keyof typeof FEATURE];

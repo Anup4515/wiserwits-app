@@ -328,7 +328,7 @@ export type FeedCategory =
   | "assignment" | "advice" | "feedback" | "consultation"
   | "diet" | "lab" | "report" | "marks" | "attendance"
   | "reminder" | "holistic" | "timetable" | "calendar"
-  | "live_class" | "workshop" | "certificate";
+  | "live_class" | "workshop" | "certificate" | "notice";
 
 export interface FeedItem {
   id: string;             // stable across categories, e.g. "event:123"
@@ -649,4 +649,22 @@ export interface SelfHolisticRow {
 export interface Paged<T> {
   items: T[];
   nextCursor: string | null;
+}
+
+// ── School notices (/notices) ──────────────────────────────────────────────
+/**
+ * A notice the school published to this student. `attachment_path` is a bare
+ * storage relPath — run it through `resolveFileUrl()` before fetching.
+ */
+export interface NoticeRow {
+  id: number;
+  title: string;
+  body: string;
+  attachment_path: string | null;
+  attachment_name: string | null;
+  pinned: boolean;
+  published_at: string | null;
+  expires_at: string | null;
+  posted_by: string | null;
+  created_at: string;
 }

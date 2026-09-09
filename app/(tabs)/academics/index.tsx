@@ -28,6 +28,7 @@ export default function AcademicsHub() {
     desc: string;
     feature: string;
   }[] = [
+    { href: "/(tabs)/academics/notices", icon: "megaphone-outline", label: "Notices", desc: "Announcements from your school", feature: FEATURE.notices },
     { href: "/(tabs)/academics/attendance", icon: "calendar-outline", label: "Attendance", desc: "Daily record & percentage", feature: FEATURE.attendance },
     { href: "/(tabs)/academics/exams", icon: "reader-outline", label: "Exams & Marks", desc: "Results by exam and subject", feature: FEATURE.exams },
     { href: "/(tabs)/academics/report", icon: "document-text-outline", label: "Report Card", desc: "Term summaries & grades", feature: FEATURE.report },

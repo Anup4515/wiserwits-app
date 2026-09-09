@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Linking, Alert, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Alert, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import { useLocalSearchParams } from "expo-router";
 
 import { useCourse, useCourseReviews, useSubmitCourseReview } from "@/api/hooks";
-import { downloadAndShare } from "@/lib/download";
+import { downloadAndShare, resolveFileUrl } from "@/lib/download";
+import { AuthedImage } from "@/components/AuthedImage";
+import { VideoPlayerModal } from "@/components/VideoPlayerModal";
 import { QueryView } from "@/components/QueryView";
 import { Card, Pill, Button, Field } from "@/components/ui";
 import { SectionHeader, EmptyState } from "@/components/data-ui";
@@ -17,8 +18,16 @@ const FEEDBACK_MAX = 1000;
 
 /**
  * Course detail (Phase 4.5). Enrolled-only content — the backend 403s if the
- * student isn't enrolled, which surfaces as the QueryView error state. Lists the
- * course's videos and documents, each opening in the device browser/player.
+ * student isn't enrolled, which surfaces as the QueryView error state.
+ *
+ * Videos stream in an in-app player; documents download through the OS share
+ * sheet. Everything here is a BARE storage relPath from the API, so it has to
+ * go through `resolveFileUrl()` first — the screen used to hand those paths
+ * straight to `Linking.openURL`, which could only ever answer "this link can't
+ * be opened", and to `downloadAndShare`, which failed for the same reason.
+ * Handing the resolved URL to the device browser wouldn't work either: it
+ * carries no Bearer token, so /api/files would 401. Both paths below attach the
+ * token themselves.
  */
 export default function CourseDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -40,22 +49,15 @@ export default function CourseDetailScreen() {
   );
 }
 
-async function openLink(url: string) {
-  const ok = await Linking.canOpenURL(url).catch(() => false);
-  if (ok) {
-    await Linking.openURL(url);
-  } else {
-    Alert.alert("Can't open", "This link can't be opened on your device.");
-  }
-}
-
 function CourseBody({ course }: { course: CourseDetail }) {
   const hasContent = course.videos.length > 0 || course.documents.length > 0;
+  const [playing, setPlaying] = useState<{ uri: string; title: string } | null>(null);
+  const heroUri = resolveFileUrl(course.image);
 
   return (
     <>
-      {course.image ? (
-        <Image source={{ uri: course.image }} style={styles.hero} contentFit="cover" />
+      {heroUri ? (
+        <AuthedImage uri={heroUri} style={styles.hero} contentFit="cover" />
       ) : null}
 
       <Text style={styles.title}>{course.title}</Text>
@@ -71,9 +73,22 @@ function CourseBody({ course }: { course: CourseDetail }) {
         <>
           <SectionHeader title="Videos" />
           <Card style={styles.listCard}>
-            {course.videos.map((url, i) => (
-              <ContentRow key={`v${i}`} first={i === 0} icon="play-circle-outline" label={fileName(url, `Video ${i + 1}`)} url={url} />
-            ))}
+            {course.videos.map((path, i) => {
+              const label = fileName(path, `Video ${i + 1}`);
+              const uri = resolveFileUrl(path);
+              return (
+                <ContentRow
+                  key={`v${i}`}
+                  first={i === 0}
+                  icon="play-circle-outline"
+                  label={label}
+                  url={uri}
+                  onPress={uri ? () => setPlaying({ uri, title: label }) : undefined}
+                  actionIcon="play-outline"
+                  actionLabel="Play video"
+                />
+              );
+            })}
           </Card>
         </>
       ) : null}
@@ -82,8 +97,14 @@ function CourseBody({ course }: { course: CourseDetail }) {
         <>
           <SectionHeader title="Documents" />
           <Card style={styles.listCard}>
-            {course.documents.map((url, i) => (
-              <ContentRow key={`d${i}`} first={i === 0} icon="document-text-outline" label={fileName(url, `Document ${i + 1}`)} url={url} />
+            {course.documents.map((path, i) => (
+              <ContentRow
+                key={`d${i}`}
+                first={i === 0}
+                icon="document-text-outline"
+                label={fileName(path, `Document ${i + 1}`)}
+                url={resolveFileUrl(path)}
+              />
             ))}
           </Card>
         </>
@@ -94,6 +115,13 @@ function CourseBody({ course }: { course: CourseDetail }) {
       ) : null}
 
       <CourseReviews slug={course.slug} />
+
+      <VideoPlayerModal
+        visible={playing != null}
+        uri={playing?.uri ?? null}
+        title={playing?.title ?? ""}
+        onClose={() => setPlaying(null)}
+      />
     </>
   );
 }
@@ -236,20 +264,36 @@ function Stars({
   );
 }
 
+/**
+ * One video or document. `url` is the resolved absolute URL, or null when the
+ * stored path couldn't be resolved — in that case the row renders inert rather
+ * than firing a request that can only fail.
+ *
+ * `onPress` is what separates the two kinds: a video opens the in-app player,
+ * a document has no press action and is reached through Download, which streams
+ * it with the student's token and hands it to the OS share sheet.
+ */
 function ContentRow({
   first,
   icon,
   label,
   url,
+  onPress,
+  actionIcon,
+  actionLabel,
 }: {
   first: boolean;
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
-  url: string;
+  url: string | null;
+  onPress?: () => void;
+  actionIcon?: keyof typeof Ionicons.glyphMap;
+  actionLabel?: string;
 }) {
   const [downloading, setDownloading] = useState(false);
 
   async function download() {
+    if (!url) return;
     setDownloading(true);
     await downloadAndShare(url, label);
     setDownloading(false);
@@ -259,20 +303,22 @@ function ContentRow({
     <View>
       {!first ? <View style={styles.divider} /> : null}
       <View style={styles.row}>
-        <Ionicons name={icon} size={20} color={colors.navy} />
-        <Pressable style={styles.rowTap} onPress={() => openLink(url)}>
+        <Ionicons name={icon} size={20} color={url ? colors.navy : colors.textMuted} />
+        <Pressable style={styles.rowTap} onPress={onPress} disabled={!onPress}>
           <Text style={styles.rowLabel} numberOfLines={1}>{label}</Text>
         </Pressable>
-        {/* Open in the device player/browser (streams online). */}
-        <Pressable onPress={() => openLink(url)} hitSlop={8} style={styles.rowAction}>
-          <Ionicons name="open-outline" size={18} color={colors.textMuted} />
-        </Pressable>
+        {/* Play in the in-app player — streams, nothing is downloaded first. */}
+        {onPress && actionIcon ? (
+          <Pressable onPress={onPress} hitSlop={8} style={styles.rowAction} accessibilityLabel={actionLabel}>
+            <Ionicons name={actionIcon} size={19} color={colors.navy} />
+          </Pressable>
+        ) : null}
         {/* Download for offline: saves via the OS share sheet (Files / Photos). */}
-        <Pressable onPress={download} hitSlop={8} disabled={downloading} style={styles.rowAction}>
+        <Pressable onPress={download} hitSlop={8} disabled={downloading || !url} style={styles.rowAction} accessibilityLabel={`Download ${label}`}>
           {downloading ? (
             <ActivityIndicator size="small" color={colors.navy} />
           ) : (
-            <Ionicons name="download-outline" size={19} color={colors.navy} />
+            <Ionicons name="download-outline" size={19} color={url ? colors.navy : colors.textMuted} />
           )}
         </Pressable>
       </View>

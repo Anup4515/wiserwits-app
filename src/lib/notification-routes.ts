@@ -25,6 +25,7 @@ export const CATEGORY_HREF: Record<FeedCategory, Href> = {
   live_class: "/live-classes",
   workshop: "/workshops",
   certificate: "/certificates",
+  notice: "/(tabs)/academics/notices",
 };
 
 /** Resolve a (possibly unknown) category string to a route, defaulting to the feed. */

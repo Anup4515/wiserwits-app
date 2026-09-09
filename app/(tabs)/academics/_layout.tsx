@@ -26,6 +26,7 @@ export default function AcademicsLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: "Academics", headerShown: false }} />
+      <Stack.Screen name="notices" options={{ title: "Notices" }} />
       <Stack.Screen name="attendance" options={{ title: "Attendance" }} />
       <Stack.Screen name="exams" options={{ title: "Exams & Marks" }} />
       <Stack.Screen name="marks" options={{ title: "Marks" }} />

@@ -19,7 +19,12 @@ import { useApiMutation } from "@/api/mutations";
 import { api } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
 import { useEnrollment } from "@/features/enrollment/EnrollmentContext";
-import { useMutation, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueryClient,
+  type InfiniteData,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import type {
   AdviceRow,
   ArticleDetail,
@@ -31,6 +36,7 @@ import type {
   BmiRecord,
   CalendarData,
   CertificateRow,
+  NoticeRow,
   ConsultationRow,
   ContributorGrant,
   CourseDetailResponse,
@@ -526,6 +532,45 @@ export function useMarkFeedRead() {
   });
 }
 
+/**
+ * Delete ONE notification (DELETE /feed?id=). Takes the feed item's string id
+ * (`event:123`) and sends the numeric part.
+ *
+ * Optimistic: the row is spliced out of every loaded `["feed"]` page before the
+ * request, so the list doesn't hold a deleted item for a round-trip and the
+ * bell badge (which counts page 0) drops with it. A failure puts the row back
+ * by re-fetching. Deliberately NOT `invalidate` alone — refetching an infinite
+ * query reloads every page the student has scrolled through.
+ */
+export function useDeleteFeedItem() {
+  const qc = useQueryClient();
+  return useMutation<{ ok: boolean }, Error, string>({
+    mutationFn: async (itemId: string) => {
+      const eventId = Number(itemId.replace(/^event:/, ""));
+      const res = await api.delete<{ ok: boolean }>(`/api/student/feed?id=${eventId}`);
+      if (res.error) throw new Error(res.error);
+      return res.data as { ok: boolean };
+    },
+    onMutate: async (itemId: string) => {
+      await qc.cancelQueries({ queryKey: ["feed"] });
+      qc.setQueriesData<InfiniteData<FeedData>>({ queryKey: ["feed"] }, (old) =>
+        old
+          ? {
+              ...old,
+              pages: old.pages.map((page) => ({
+                ...page,
+                items: page.items.filter((i) => i.id !== itemId),
+              })),
+            }
+          : old
+      );
+    },
+    onError: () => {
+      void qc.invalidateQueries({ queryKey: ["feed"] });
+    },
+  });
+}
+
 // ── Phase 4: content read screens ───────────────────────────────────────────
 
 /**
@@ -617,6 +662,19 @@ export function useReminders(): SourceQueryResult<ReminderRow[]> {
   return useSourceQuery<ReminderRow[]>({
     key: "reminders",
     build: () => ({ path: "/api/student/reminders" }),
+  });
+}
+
+/**
+ * School notices — paginated. No feature key: notices are always allowed, and
+ * the endpoint decides what this student may see (audience, class targeting,
+ * expiry) rather than the client.
+ */
+export function useNotices(): SourceInfiniteQueryResult<Paged<NoticeRow>> {
+  return useSourceInfiniteQuery<Paged<NoticeRow>>({
+    key: "notices",
+    cursorParam: "page",
+    build: () => ({ path: "/api/student/notices" }),
   });
 }
 

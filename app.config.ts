@@ -66,6 +66,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     "expo-router",
     "expo-secure-store",
     "expo-sharing",
+    // In-app course video playback. Native module → adding it changes the
+    // fingerprint runtimeVersion above, so it needs a fresh build, not an OTA
+    // update.
+    "expo-video",
     "@react-native-community/datetimepicker",
     [
       "expo-image-picker",
