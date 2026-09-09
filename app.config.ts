@@ -50,6 +50,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: "com.wiserwits.studentapp",
+    // react-native-blob-util's own manifest declares READ/WRITE_EXTERNAL_STORAGE
+    // and DOWNLOAD_WITHOUT_NOTIFICATION with no maxSdkVersion, and the manifest
+    // merger would fold all three into this app. We only use its
+    // MediaCollection.copyToMediaStore path, which needs NO permission on
+    // Android 10+ (older devices fall back to SAF in src/lib/download.ts), and
+    // broad storage permissions invite a Play Store policy review for no gain.
+    blockedPermissions: [
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+      "android.permission.DOWNLOAD_WITHOUT_NOTIFICATION",
+    ],
     adaptiveIcon: {
       // White background so the navy "W" reads clearly; the foreground logo is
       // padded on white too, so background + foreground blend seamlessly.

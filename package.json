@@ -42,6 +42,7 @@
     "react-dom": "19.2.0",
     "react-hook-form": "^7.80.0",
     "react-native": "0.83.6",
+    "react-native-blob-util": "^0.24.10",
     "react-native-gesture-handler": "~2.30.0",
     "react-native-gifted-charts": "^1.4.77",
     "react-native-razorpay": "^3.0.0",

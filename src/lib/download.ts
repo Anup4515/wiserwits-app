@@ -1,5 +1,6 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
+import ReactNativeBlobUtil from "react-native-blob-util";
 import { Alert, Platform } from "react-native";
 
 import { env } from "@/lib/env";
@@ -126,11 +127,46 @@ async function writeIntoFolder(dirUri: string, cacheUri: string, filename: strin
   });
 }
 
+/** Android 10 (API 29) is where MediaStore gained the Downloads collection. */
+const ANDROID_Q = 29;
+
 /**
- * Android: write the downloaded file into a folder the student picked once
- * (the picker opens on Downloads), instead of pushing it through the share
- * sheet. The grant is persisted, so the picker appears on the first download
- * only.
+ * Android 10+: drop the file straight into the system Downloads collection.
+ *
+ * This is what every other app does — `MediaStore` writes to public Downloads
+ * with NO runtime permission and NO folder picker, so the student just taps
+ * Download and the file is there. It supersedes the SAF path below, which is
+ * now only reached on Android 9 and older (MediaStore has no Downloads
+ * collection before API 29).
+ *
+ * We still download through `expo-file-system` first rather than letting the
+ * library fetch: the file sits behind the authenticated /api/files proxy, and
+ * the existing path already attaches the Bearer token, re-checks the HTTP
+ * status and rejects an HTML sign-in page. Handing the URL to a background
+ * downloader would lose all three and happily save the login page as a PDF.
+ */
+async function saveToMediaStore(cacheUri: string, filename: string): Promise<true | "fallback"> {
+  if (Platform.OS !== "android" || Number(Platform.Version) < ANDROID_Q) return "fallback";
+  const { mime } = splitName(filename);
+  try {
+    await ReactNativeBlobUtil.MediaCollection.copyToMediaStore(
+      { name: filename, parentFolder: "", mimeType: mime },
+      "Download",
+      // The library wants a bare filesystem path, not a file:// URI.
+      cacheUri.replace(/^file:\/\//, ""),
+    );
+  } catch {
+    return "fallback";
+  }
+  Alert.alert("Saved", `"${filename}" was saved to your Downloads folder.`);
+  return true;
+}
+
+/**
+ * Android 9 and older: write into a folder the student picks once (the picker
+ * opens on Downloads). The grant is persisted, so the picker appears on the
+ * first download only. Android 10+ never reaches this — `saveToMediaStore()`
+ * handles it with no prompt at all.
  *
  * Returns "fallback" when the share sheet should handle it instead — the file
  * is too large to base64, the student declined the folder prompt, or SAF
@@ -200,12 +236,16 @@ function isShareInProgress(e: unknown): boolean {
 /**
  * Download a remote file and put it somewhere the student can actually find it.
  *
- * Android saves straight into a folder they pick once (the picker opens on
- * Downloads) via the Storage Access Framework — which is what "Download" is
- * expected to mean, and it sidesteps expo-sharing's one-shot `pendingPromise`
- * that could wedge every later download until the app was relaunched. iOS, and
- * any Android case SAF can't take (over `SAF_MAX_BYTES`, or the folder prompt
- * declined), still go through the share sheet.
+ * Android tries three routes, best first:
+ *   1. MediaStore  — Android 10+. Lands in Downloads with no permission and no
+ *                    prompt, the way Chrome and every other app behaves.
+ *   2. SAF         — Android 9 and older, which has no Downloads collection.
+ *                    Costs a one-time folder grant, then saves silently.
+ *   3. Share sheet — last resort (SAF declined, or a file too large to base64).
+ *
+ * iOS always uses the share sheet. Routing away from it on Android also avoids
+ * expo-sharing's one-shot `pendingPromise`, which could wedge every later
+ * download until the app was relaunched.
  *
  * Surfaces its own alerts on failure and returns whether it succeeded.
  * `onProgress` reports 0–1 for large files (e.g. course videos).
@@ -268,8 +308,10 @@ export async function downloadAndSave(
     }
 
     if (Platform.OS === "android") {
-      const saved = await saveToFolder(result.uri, safeName(filename));
-      if (saved === true) return true;
+      const name = safeName(filename);
+      // MediaStore first (no prompt, Android 10+); SAF only for older devices.
+      if ((await saveToMediaStore(result.uri, name)) === true) return true;
+      if ((await saveToFolder(result.uri, name)) === true) return true;
     }
 
     if (!(await Sharing.isAvailableAsync())) {
