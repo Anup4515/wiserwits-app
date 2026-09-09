@@ -90,6 +90,7 @@ export function Field({
   error,
   icon,
   secureTextEntry,
+  style,
   ...props
 }: {
   label: string;
@@ -98,17 +99,29 @@ export function Field({
 } & TextInputProps) {
   const isSecure = !!secureTextEntry;
   const [hidden, setHidden] = useState(true);
+  // A multiline field has to grow: the base row is a fixed 50px with its
+  // children centred, which clips a 4-line input (and, when the caller also
+  // passed a taller `style`, pushed the text clean out of the box).
+  const isMultiline = !!props.multiline;
 
   return (
     <View style={styles.fieldWrap}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <View style={[styles.field, error ? styles.fieldError : null]}>
+      <View
+        style={[
+          styles.field,
+          isMultiline ? styles.fieldMultiline : null,
+          error ? styles.fieldError : null,
+        ]}
+      >
         {icon ? (
           <Ionicons name={icon} size={18} color={colors.textMuted} style={{ marginRight: spacing.sm }} />
         ) : null}
         <TextInput
           placeholderTextColor="#94a3b8"
-          style={styles.input}
+          // `style` is merged, not spread-overridden: a caller passing `style`
+          // used to replace the base outright and lose flex:1/colour/size.
+          style={[styles.input, isMultiline ? styles.inputMultiline : null, style]}
           secureTextEntry={isSecure && hidden}
           {...props}
         />
@@ -233,7 +246,14 @@ const styles = StyleSheet.create({
     height: 50,
   },
   fieldError: { borderColor: colors.danger },
+  fieldMultiline: {
+    height: "auto",
+    minHeight: 96,
+    alignItems: "flex-start",
+    paddingVertical: 10,
+  },
   input: { flex: 1, color: colors.ink, fontSize: 14.5, fontWeight: "600" },
+  inputMultiline: { textAlignVertical: "top" },
   eye: { paddingLeft: spacing.sm },
   errorText: { ...typography.caption, color: colors.danger, marginTop: spacing.xs },
 

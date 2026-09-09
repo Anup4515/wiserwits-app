@@ -1,6 +1,8 @@
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Linking, Alert } from "react-native";
+import { useState } from "react";
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from "react-native";
 
 import { useFeedback } from "@/api/hooks";
+import { downloadAndShare, resolveFileUrl } from "@/lib/download";
 import { QueryView } from "@/components/QueryView";
 import { Card, Button } from "@/components/ui";
 import { EmptyState } from "@/components/data-ui";
@@ -41,15 +43,6 @@ export default function FeedbackScreen() {
   );
 }
 
-async function openLink(url: string) {
-  const ok = await Linking.canOpenURL(url).catch(() => false);
-  if (ok) {
-    await Linking.openURL(url);
-  } else {
-    Alert.alert("Can't open", "This link can't be opened on your device.");
-  }
-}
-
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function prettyDate(iso: string): string {
   const d = new Date(iso);
@@ -59,16 +52,32 @@ function prettyDate(iso: string): string {
 
 function FeedbackCard({ item }: { item: TeacherFeedbackRow }) {
   const meta = [item.teacher_name, prettyDate(item.created_at)].filter(Boolean).join(" · ");
+  const [downloading, setDownloading] = useState(false);
+  // `file_path` is a BARE storage relPath, so it needs resolveFileUrl() plus the
+  // Bearer token downloadAndShare() attaches — /api/files 401s without it, and
+  // Linking.openURL could only ever answer "this link can't be opened".
+  const fileUrl = resolveFileUrl(item.file_path);
+
+  async function download() {
+    if (!fileUrl) return;
+    setDownloading(true);
+    const ext = item.file_path?.split("?")[0].match(/\.[a-z0-9]+$/i)?.[0] ?? "";
+    await downloadAndShare(fileUrl, `${item.subject || "feedback"}${ext.toLowerCase()}`);
+    setDownloading(false);
+  }
+
   return (
     <Card style={{ gap: spacing.sm }}>
       <Text style={styles.title}>{item.subject ?? "Feedback"}</Text>
       {meta ? <Text style={styles.meta}>{meta}</Text> : null}
       {item.feedback ? <Text style={styles.body}>{item.feedback}</Text> : null}
-      {item.file_path ? (
+      {fileUrl ? (
         <Button
-          label="View attachment"
+          label={downloading ? "Downloading…" : "Download attachment"}
           variant="secondary"
-          onPress={() => openLink(item.file_path as string)}
+          onPress={download}
+          loading={downloading}
+          disabled={downloading}
         />
       ) : null}
     </Card>

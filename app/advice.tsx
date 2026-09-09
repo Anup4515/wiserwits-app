@@ -1,7 +1,10 @@
-import { View, Text, StyleSheet, ScrollView, RefreshControl } from "react-native";
+import { useState } from "react";
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, ActivityIndicator } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 import { useAdvice } from "@/api/hooks";
+import { downloadAndShare, resolveFileUrl } from "@/lib/download";
 import { Button, Card, Pill } from "@/components/ui";
 import { QueryView } from "@/components/QueryView";
 import { EmptyState } from "@/components/data-ui";
@@ -13,6 +16,11 @@ import type { AdviceRow } from "@/api/student-types";
  * Consultant Advice (Phase 3) — the student's own advice thread with their
  * assigned consultant (writable via /ask-advice). Consultant feedback lives on
  * its own screen (/feedback) and is no longer shown here.
+ *
+ * `file_path` is written ONLY by the consultant when they reply, so the
+ * attachment belongs to the reply bubble, never the student's own message. It
+ * is a bare storage relPath, so it needs resolveFileUrl() plus the Bearer token
+ * downloadAndShare() attaches — /api/files 401s without it.
  */
 export default function AdviceScreen() {
   const router = useRouter();
@@ -62,6 +70,7 @@ function AdviceThread({ rows }: { rows: AdviceRow[] }) {
 
 function AdviceCard({ row }: { row: AdviceRow }) {
   const answered = hasReply(row);
+  const fileUrl = resolveFileUrl(row.file_path);
   return (
     <Card style={{ gap: spacing.md }}>
       <View style={styles.cardHead}>
@@ -81,15 +90,49 @@ function AdviceCard({ row }: { row: AdviceRow }) {
         </View>
       </View>
 
-      {answered ? (
+      {answered || fileUrl ? (
         <View style={styles.replyRow}>
           <View style={[styles.bubble, styles.replyBubble]}>
             <Text style={styles.replyLabel}>Consultant</Text>
-            <Text style={styles.replyText}>{row.feedback}</Text>
+            {row.feedback ? <Text style={styles.replyText}>{row.feedback}</Text> : null}
+            {fileUrl ? <AttachmentLink url={fileUrl} path={row.file_path} /> : null}
           </View>
         </View>
       ) : null}
     </Card>
+  );
+}
+
+/**
+ * Compact download chip — a full-width <Button> would swamp the chat bubble it
+ * sits in. Keeps the stored file's own extension: the consultant may attach a
+ * document or an image, so hardcoding ".pdf" would mislabel half of them.
+ */
+function AttachmentLink({ url, path }: { url: string; path: string | null }) {
+  const [downloading, setDownloading] = useState(false);
+
+  async function download() {
+    setDownloading(true);
+    const ext = path?.split("?")[0].match(/\.[a-z0-9]+$/i)?.[0] ?? "";
+    await downloadAndShare(url, `advice-attachment${ext.toLowerCase()}`);
+    setDownloading(false);
+  }
+
+  return (
+    <Pressable
+      onPress={download}
+      disabled={downloading}
+      accessibilityRole="button"
+      accessibilityLabel="Download attachment"
+      style={({ pressed }) => [styles.attach, pressed && !downloading && { opacity: 0.85 }]}
+    >
+      {downloading ? (
+        <ActivityIndicator size="small" color={colors.navy} />
+      ) : (
+        <Ionicons name="download-outline" size={16} color={colors.navy} />
+      )}
+      <Text style={styles.attachText}>{downloading ? "Downloading…" : "Attachment"}</Text>
+    </Pressable>
   );
 }
 
@@ -151,4 +194,19 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   replyText: { ...typography.body, color: colors.ink },
+
+  attach: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    marginTop: spacing.sm,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: radius.sm,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  attachText: { ...typography.label, color: colors.navy },
 });

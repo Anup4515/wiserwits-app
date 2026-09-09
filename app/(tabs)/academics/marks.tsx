@@ -51,6 +51,10 @@ export default function MarksScreen() {
 
 function MarksBody({ data }: { data: MarksData }) {
   if (data.marks.length === 0) {
+    // Upcoming/ongoing exam: marks aren't published yet, but the per-subject
+    // schedule is — show what the student can prep against instead of an empty
+    // screen. Self exams carry no schedule, so they still fall through below.
+    if (data.schedule.length > 0) return <ScheduleBody schedule={data.schedule} />;
     return (
       <Card>
         <EmptyState icon="reader-outline" title="No marks recorded" subtitle="This exam has no subject marks yet." />
@@ -133,6 +137,34 @@ function MarksBody({ data }: { data: MarksData }) {
   );
 }
 
+function ScheduleBody({ schedule }: { schedule: MarksData["schedule"] }) {
+  return (
+    <>
+      <SectionHeader title="Subject schedule" />
+      <Card style={{ paddingVertical: spacing.xs }}>
+        {schedule.map((s, i) => (
+          <View key={s.subject_id} style={[styles.subjectRow, i > 0 && styles.divider]}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.subjectName}>{s.subject_name}</Text>
+              <Text style={styles.subjectMeta}>
+                {s.exam_date ? shortDate(s.exam_date) : "Date not announced"}
+                {s.exam_time ? ` · ${time12(s.exam_time)}` : ""}
+                {s.duration_minutes != null ? ` · ${s.duration_minutes} min` : ""}
+                {s.room_number ? ` · Room ${s.room_number}` : ""}
+              </Text>
+            </View>
+            <Text style={styles.marks}>
+              {num(s.maximum_marks)}
+              <Text style={styles.marksMax}> marks</Text>
+            </Text>
+          </View>
+        ))}
+      </Card>
+      <Text style={styles.scheduleNote}>Marks will appear here once they&apos;re published.</Text>
+    </>
+  );
+}
+
 const styles = StyleSheet.create({
   pad: { padding: spacing.lg, paddingBottom: spacing.xxl },
   summary: { flexDirection: "row", alignItems: "center", gap: spacing.lg },
@@ -145,6 +177,7 @@ const styles = StyleSheet.create({
   subjectName: { ...typography.label, color: colors.ink, fontSize: 13.5 },
   subjectMeta: { ...typography.caption, color: colors.textMuted, marginTop: 1 },
   marks: { fontSize: 15, fontWeight: "800", color: colors.ink },
+  scheduleNote: { ...typography.caption, color: colors.textMuted, marginTop: spacing.md, textAlign: "center" },
   marksMax: { fontSize: 12, fontWeight: "600", color: colors.textMuted },
   pctText: { ...typography.label, fontWeight: "800", minWidth: 40, textAlign: "right" },
   absent: { ...typography.label, color: colors.red, fontWeight: "800" },

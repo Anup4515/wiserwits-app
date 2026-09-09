@@ -197,7 +197,6 @@ function CourseReviews({ slug }: { slug: string }) {
             placeholder="Share what you thought of this course"
             multiline
             numberOfLines={4}
-            style={styles.feedbackInput}
           />
           <Button
             label={submit.isPending ? "Saving…" : my_review ? "Update review" : "Submit review"}
@@ -360,8 +359,6 @@ const styles = StyleSheet.create({
   summaryMeta: { ...typography.caption, color: colors.textMuted },
 
   yourTitle: { ...typography.h2, fontSize: 15, color: colors.ink },
-  feedbackInput: { minHeight: 92, textAlignVertical: "top", paddingTop: spacing.sm },
-
   reviewRow: { padding: spacing.md, gap: 6 },
   reviewHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
   reviewName: { ...typography.label, color: colors.ink, flex: 1 },

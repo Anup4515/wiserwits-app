@@ -95,3 +95,16 @@ version still matches the APK you shipped:
 ```bash
 npm run fingerprint:staging  # hash must equal the build's Runtime Version
 ```
+
+### Troubleshooting: "Runtime version mismatch" build failure
+
+If a build dies in the **Configure expo-updates** phase with a local-vs-EAS
+runtime version mismatch, check what `.gitignore` excludes. EAS CLI uses
+`.gitignore` (or `.easignore`, if present) to decide which files to upload, and
+`eas.json` is a fingerprint input — so listing `eas.json` in `.gitignore` keeps
+it off the builder, EAS fingerprints a project without it, and the hash diverges
+from the one the CLI computed locally. Keep `eas.json` committed and un-ignored.
+
+A `bareNativeDir` entry for `android/` in the fingerprint diff is a red herring:
+EAS generates that directory during prebuild, it hashes to `null`, and it does
+not affect the resulting runtime version.
