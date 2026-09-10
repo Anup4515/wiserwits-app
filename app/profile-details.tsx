@@ -14,8 +14,12 @@ import { resolveFileUrl } from "@/lib/download";
 /**
  * Profile details — the read-only record a student opens by tapping their
  * avatar in the home header. Mirrors the fields the web student dashboard's
- * profile page shows (personal, contact, family, academic, consultant), minus
- * the inline editing (contact edits stay on the web dashboard for now).
+ * profile page shows (personal, contact, family, academic, consultant).
+ * Tapping the pencil opens `profile-edit`, which covers everything the student
+ * may change: photo, name, date of birth, blood group and contact details.
+ *
+ * Height and weight are shown here but are NOT editable anywhere — they mirror
+ * the student's latest BMI reading, written by Log BMI.
  *
  * Works for independent students too: the `/profile` endpoint resolves from
  * identity, so `enrollment` is simply null and the Academic card is hidden.
@@ -107,7 +111,10 @@ export default function ProfileDetails() {
         </Section>
       ) : null}
 
-      <Text style={styles.note}>Tap the pencil to update your photo and contact details.</Text>
+      <Text style={styles.note}>
+        Tap the pencil to update your photo, name, date of birth, blood group and
+        contact details. Height and weight follow your latest BMI reading.
+      </Text>
     </ScrollView>
   );
 }

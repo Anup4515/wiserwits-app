@@ -142,6 +142,12 @@ export function useProfile(): UseQueryResult<ProfileData> {
  * ALLOWED_FIELDS + the independent-student grade). All optional — only send
  * what changed. */
 export interface ProfileUpdate {
+  first_name?: string;
+  middle_name?: string;
+  last_name?: string;
+  /** YYYY-MM-DD, or "" to clear. */
+  date_of_birth?: string;
+  blood_group?: string;
   phone?: string;
   alternate_phone?: string;
   address?: string;
