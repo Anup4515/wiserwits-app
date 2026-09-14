@@ -335,6 +335,9 @@ export interface FeedItem {
   category: FeedCategory;
   title: string;
   body: string | null;
+  // Emitter's deep link — a web-dashboard path like "/student/exams", or null.
+  // Optional: older servers don't send it. Route with hrefForEvent().
+  link?: string | null;
   ts: string;             // ISO — screen groups by calendar day
   unread: boolean;
 }
@@ -599,9 +602,10 @@ export interface ArticleDetail {
   sections: ArticleSection[];
   updated_at: string;
 }
-// Unified reminders/agenda item — derived server-side from live classes,
-// workshops, assignments and consultations, pre-bucketed into today/upcoming/past.
-export type ReminderType = "consultation" | "live_class" | "workshop" | "assignment";
+// Unified reminders/agenda item — derived server-side from consultant
+// appointment/test reminders, live classes, workshops, assignments and
+// consultations, pre-bucketed into today/upcoming/past.
+export type ReminderType = "appointment" | "consultation" | "live_class" | "workshop" | "assignment";
 export type ReminderBucket = "today" | "upcoming" | "past";
 
 export interface ReminderRow {
@@ -611,6 +615,7 @@ export interface ReminderRow {
   subtitle: string | null;
   when: string;               // ISO datetime, or YYYY-MM-DD for date-only sources
   status: string | null;
+  attachment?: string | null; // relPath of a consultant-attached file (appointment only)
   bucket: ReminderBucket;
 }
 

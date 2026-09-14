@@ -8,7 +8,8 @@ import { useAuth } from "@/auth/AuthContext";
 import { useEnrollment } from "@/features/enrollment/EnrollmentContext";
 import { SourceBadge } from "@/components/data-ui";
 import { hasFeature, FEATURE } from "@/lib/features";
-import { gradients, colors, palette, spacing, radius, typography, shadow } from "@/theme";
+import { gradients, colors, spacing, radius, typography, shadow } from "@/theme";
+import { TileIcon, type TileIconName } from "@/components/icons/tile-icon";
 
 /**
  * Learning hub — fans out to the learning screens (courses, assignments, live
@@ -25,18 +26,18 @@ export default function LearningHub() {
 
   const items: {
     href: Href;
-    icon: keyof typeof Ionicons.glyphMap;
+    icon: TileIconName;
     label: string;
     desc: string;
     feature?: string; // omitted for always-free features (courses)
   }[] = [
-    { href: "/courses", icon: "book-outline", label: "Courses", desc: "Enrolled & available courses" },
-    { href: "/assignments", icon: "clipboard-outline", label: "Assignments", desc: "Tasks to submit & track", feature: FEATURE.assignments },
-    { href: "/live-classes", icon: "videocam-outline", label: "Live classes", desc: "Upcoming & past sessions", feature: FEATURE.liveClasses },
-    { href: "/workshops", icon: "easel-outline", label: "Workshops", desc: "Hands-on learning events", feature: FEATURE.workshops },
-    { href: "/certificates", icon: "ribbon-outline", label: "Certificates", desc: "Your earned certificates", feature: FEATURE.certificates },
-    { href: "/advice", icon: "chatbubble-ellipses-outline", label: "Consultant Advice", desc: "Ask & view mentor advice", feature: FEATURE.advice },
-    { href: "/feedback", icon: "star-outline", label: "Consultant Feedback", desc: "Feedback from your consultant", feature: FEATURE.feedback },
+    { href: "/courses", icon: "courses", label: "Courses", desc: "Enrolled & available courses" },
+    { href: "/assignments", icon: "assignments", label: "Assignments", desc: "Tasks to submit & track", feature: FEATURE.assignments },
+    { href: "/live-classes", icon: "live-classes", label: "Live classes", desc: "Upcoming & past sessions", feature: FEATURE.liveClasses },
+    { href: "/workshops", icon: "workshops", label: "Workshops", desc: "Hands-on learning events", feature: FEATURE.workshops },
+    { href: "/certificates", icon: "certificates", label: "Certificates", desc: "Your earned certificates", feature: FEATURE.certificates },
+    { href: "/advice", icon: "advice", label: "Consultant Advice", desc: "Ask & view mentor advice", feature: FEATURE.advice },
+    { href: "/feedback", icon: "feedback", label: "Consultant Feedback", desc: "Feedback from your consultant", feature: FEATURE.feedback },
   ];
 
   return (
@@ -61,7 +62,7 @@ export default function LearningHub() {
               accessibilityLabel={locked ? `${it.label} — locked, view plans` : it.label}
             >
               <View style={styles.rowIc}>
-                <Ionicons name={it.icon} size={22} color={colors.navy} />
+                <TileIcon name={it.icon} size={30} muted={locked} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowLabel}>{it.label}</Text>
@@ -102,8 +103,10 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     ...shadow.card,
   },
+  // Neutral plate — the 3D artwork carries the colour (see tile-icon).
   rowIc: {
-    width: 46, height: 46, borderRadius: radius.md, backgroundColor: palette.primary50,
+    width: 46, height: 46, borderRadius: radius.md, backgroundColor: colors.bg,
+    borderWidth: 1, borderColor: colors.border,
     alignItems: "center", justifyContent: "center",
   },
   rowLabel: { ...typography.h2, fontSize: 15, color: colors.ink },

@@ -16,7 +16,7 @@ import { useDeleteFeedItem, useFeed, useMarkFeedRead } from "@/api/hooks";
 import { Card } from "@/components/ui";
 import { EmptyState, LoadingState, ErrorState } from "@/components/data-ui";
 import { track } from "@/lib/analytics";
-import { hrefForCategory } from "@/lib/notification-routes";
+import { hrefForEvent } from "@/lib/notification-routes";
 import { colors, palette, spacing, radius, typography } from "@/theme";
 import type { FeedCategory, FeedItem } from "@/api/student-types";
 
@@ -180,7 +180,7 @@ function FeedRow({
     // whichever responder wins, and the row would navigate on a delete tap.
     <View style={styles.row}>
       <Pressable
-        onPress={() => router.push(hrefForCategory(item.category))}
+        onPress={() => router.push(hrefForEvent(item.category, item.link))}
         style={({ pressed }) => [styles.rowMain, pressed && { opacity: 0.7 }]}
       >
         <View style={[styles.rowIc, { backgroundColor: ic.tint }]}>

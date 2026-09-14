@@ -77,6 +77,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     "expo-router",
     "expo-secure-store",
     "expo-sharing",
+    // SDK 57 ships config plugins for these three; `expo install --fix` flags
+    // them as required. They carry no options here — registering them is what
+    // wires up the native side (font registration, image decoders, status-bar
+    // styling) that earlier SDKs handled implicitly.
+    "expo-font",
+    "expo-image",
+    "expo-status-bar",
     // In-app course video playback. Native module → adding it changes the
     // fingerprint runtimeVersion above, so it needs a fresh build, not an OTA
     // update.

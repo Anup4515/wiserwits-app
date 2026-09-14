@@ -1,0 +1,8 @@
+Artwork in this folder is from Microsoft Fluent Emoji
+https://github.com/microsoft/fluentui-emoji
+
+Licensed under the MIT License. Copyright (c) Microsoft Corporation.
+
+The files here are the upstream "3D" PNG renders, downscaled to 128x128 and
+renamed to the app's tile keys (see src/components/icons/tile-icon.tsx for the
+key -> emoji mapping).

@@ -10,8 +10,10 @@ import {
   type ViewProps,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Image } from "expo-image";
 
 import { AuthedImage } from "@/components/AuthedImage";
+import { useKeyboardReveal } from "@/components/keyboard-reveal";
 import { Ionicons } from "@expo/vector-icons";
 import { palette, colors, gradients, spacing, radius, shadow, typography } from "@/theme";
 
@@ -105,6 +107,7 @@ export function Field({
   // children centred, which clips a 4-line input (and, when the caller also
   // passed a taller `style`, pushed the text clean out of the box).
   const isMultiline = !!props.multiline;
+  const reveal = useKeyboardReveal();
 
   return (
     <View style={styles.fieldWrap}>
@@ -126,6 +129,11 @@ export function Field({
           style={[styles.input, isMultiline ? styles.inputMultiline : null, style]}
           secureTextEntry={isSecure && hidden}
           {...props}
+          onFocus={(e) => {
+            // Inside AuthScaffold: scroll this field above the keyboard.
+            reveal(TextInput.State.currentlyFocusedInput());
+            props.onFocus?.(e);
+          }}
         />
         {isSecure ? (
           <Pressable
@@ -162,22 +170,34 @@ export function Card({ style, ...props }: ViewProps) {
   return <View style={[styles.card, style]} {...props} />;
 }
 
-/** Gold-gradient rounded-square logo (mock `.logo-dot` / `.brand-lg .d`). */
+/**
+ * WiserWits logo on a white plate + wordmark — same treatment as the dashboards'
+ * auth header (`ww-student-dashboard/app/(auth)/layout.tsx`). The artwork has a
+ * white background and navy strokes, so it needs the plate to read on navy.
+ * `size` is the outer plate; the logo sits inside with ~15% padding.
+ */
 export function Brand({ size = 46, withName = true }: { size?: number; withName?: boolean }) {
+  const pad = Math.round(size * 0.15);
   return (
     <View style={styles.brandRow}>
-      <LinearGradient
-        colors={gradients.gold}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.logo, { width: size, height: size, borderRadius: size * 0.3 }]}
+      <View
+        style={[styles.logo, { width: size, height: size, borderRadius: size * 0.25, padding: pad }]}
+        accessibilityRole="image"
+        accessibilityLabel="WiserWits"
       >
-        <Text style={[styles.logoText, { fontSize: size * 0.5 }]}>W</Text>
-      </LinearGradient>
-      {withName ? <Text style={styles.brandName}>WiserWits</Text> : null}
+        <Image source={LOGO} style={styles.logoImg} contentFit="contain" transition={0} />
+      </View>
+      {withName ? (
+        <View>
+          <Text style={styles.brandName}>WiserWits</Text>
+          <Text style={styles.brandTag}>Student Portal</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
+
+const LOGO = require("../../assets/images/brand-logo.png");
 
 /** Gold-gradient circular avatar with an initial (mock `.kid .av` / `.avatar-lg`). */
 /**
@@ -308,9 +328,20 @@ const styles = StyleSheet.create({
   },
 
   brandRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  logo: { alignItems: "center", justifyContent: "center" },
-  logoText: { color: palette.primary700, fontWeight: "800" },
+  logo: {
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    // soft white halo, as the dashboard's shadow-[0_0_30px_rgba(255,255,255,0.2)]
+    shadowColor: "#fff",
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 6,
+  },
+  logoImg: { width: "100%", height: "100%" },
   brandName: { color: colors.textInverse, fontSize: 22, fontWeight: "800" },
+  brandTag: { color: colors.gold, fontSize: 13, fontWeight: "700", marginTop: 1 },
 
   avatar: { alignItems: "center", justifyContent: "center" },
   avatarText: { color: palette.primary700, fontWeight: "800" },

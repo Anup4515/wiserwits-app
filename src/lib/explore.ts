@@ -1,7 +1,6 @@
-import { Ionicons } from "@expo/vector-icons";
 import type { Href } from "expo-router";
 
-import { colors, palette } from "@/theme";
+import type { TileIconName } from "@/components/icons/tile-icon";
 
 /**
  * The Explore launcher tiles — every non-tab destination a student can reach
@@ -16,11 +15,10 @@ import { colors, palette } from "@/theme";
 export type ExploreGroup = "Academics" | "Learning" | "Wellness & support" | "Account";
 
 export interface ExploreItem {
-  icon: keyof typeof Ionicons.glyphMap;
+  /** Key into the 3D tile artwork (see components/icons/tile-icon). */
+  icon: TileIconName;
   label: string;
   href: Href;
-  tint: string;
-  fg: string;
   group: ExploreGroup;
   subtitle: string;
   /**
@@ -33,31 +31,31 @@ export interface ExploreItem {
 
 export const EXPLORE: ExploreItem[] = [
   // The first HOME_EXPLORE_COUNT also appear on Home, so keep the most-used first.
-  { icon: "notifications-outline", label: "Activity", href: "/feed", tint: colors.amberBg, fg: colors.amber, group: "Wellness & support", subtitle: "Recent updates & alerts" },
-  { icon: "calendar-outline", label: "Attendance", href: "/(tabs)/academics/attendance", tint: colors.greenBg, fg: colors.green, group: "Academics", subtitle: "Daily presence & monthly %" },
-  { icon: "reader-outline", label: "Exams", href: "/(tabs)/academics/exams", tint: colors.blueBg, fg: colors.blue, group: "Academics", subtitle: "Marks & upcoming exams" },
-  { icon: "clipboard-outline", label: "Assignments", href: "/assignments", tint: palette.accent100, fg: palette.accent600, group: "Academics", subtitle: "Tasks & submissions" },
-  { icon: "heart-outline", label: "Health", href: "/(tabs)/health", tint: colors.redBg, fg: colors.red, group: "Wellness & support", subtitle: "BMI, consultations, diet & labs" },
-  { icon: "chatbubbles-outline", label: "Advice", href: "/advice", tint: palette.primary50, fg: colors.navy, group: "Wellness & support", subtitle: "Ask Consultant, read feedback" },
-  { icon: "document-text-outline", label: "Report", href: "/(tabs)/academics/report", tint: colors.blueBg, fg: colors.blue, group: "Academics", subtitle: "Report card & holistic ratings" },
-  { icon: "time-outline", label: "Timetable", href: "/(tabs)/academics/timetable", tint: colors.greenBg, fg: colors.green, group: "Academics", subtitle: "Weekly class schedule" },
-  { icon: "today-outline", label: "Calendar", href: "/(tabs)/academics/calendar", tint: colors.amberBg, fg: colors.amber, group: "Academics", subtitle: "Working days, holidays & events" },
-  { icon: "stats-chart-outline", label: "Insights", href: "/insights", tint: palette.accent100, fg: palette.accent600, group: "Academics", subtitle: "How things are going, at a glance" },
-  { icon: "card-outline", label: "Plans", href: "/subscription", tint: palette.primary50, fg: colors.navy, group: "Account", subtitle: "View & change the plan" },
-  { icon: "school-outline", label: "Courses", href: "/courses", tint: palette.accent100, fg: palette.accent600, group: "Learning", subtitle: "Browse, enrol & keep learning" },
-  { icon: "videocam-outline", label: "Live classes", href: "/live-classes", tint: colors.redBg, fg: colors.red, group: "Learning", subtitle: "Upcoming & recorded sessions" },
-  { icon: "easel-outline", label: "Workshops", href: "/workshops", tint: colors.blueBg, fg: colors.blue, group: "Learning", subtitle: "Workshops & webinars" },
-  { icon: "ribbon-outline", label: "Certificates", href: "/certificates", tint: colors.amberBg, fg: colors.amber, group: "Learning", subtitle: "Earned certificates" },
-  { icon: "book-outline", label: "Learn", href: "/articles", tint: palette.primary50, fg: colors.navy, group: "Learning", subtitle: "Articles & guides" },
-  { icon: "alarm-outline", label: "Reminders", href: "/reminders", tint: colors.greenBg, fg: colors.green, group: "Wellness & support", subtitle: "Appointments & tests" },
-  { icon: "people-circle-outline", label: "Contributors", href: "/contributors", tint: colors.amberBg, fg: colors.amber, group: "Wellness & support", subtitle: "People who can help fill in data", selfOnly: true },
+  { icon: "activity", label: "Activity", href: "/feed", group: "Wellness & support", subtitle: "Recent updates & alerts" },
+  { icon: "attendance", label: "Attendance", href: "/(tabs)/academics/attendance", group: "Academics", subtitle: "Daily presence & monthly %" },
+  { icon: "exams", label: "Exams", href: "/(tabs)/academics/exams", group: "Academics", subtitle: "Marks & upcoming exams" },
+  { icon: "assignments", label: "Assignments", href: "/assignments", group: "Academics", subtitle: "Tasks & submissions" },
+  { icon: "health", label: "Health", href: "/(tabs)/health", group: "Wellness & support", subtitle: "BMI, consultations, diet & labs" },
+  { icon: "advice", label: "Advice", href: "/advice", group: "Wellness & support", subtitle: "Ask Consultant, read feedback" },
+  { icon: "report", label: "Report", href: "/(tabs)/academics/report", group: "Academics", subtitle: "Report card & holistic ratings" },
+  { icon: "timetable", label: "Timetable", href: "/(tabs)/academics/timetable", group: "Academics", subtitle: "Weekly class schedule" },
+  { icon: "calendar", label: "Calendar", href: "/(tabs)/academics/calendar", group: "Academics", subtitle: "Working days, holidays & events" },
+  { icon: "insights", label: "Insights", href: "/insights", group: "Academics", subtitle: "How things are going, at a glance" },
+  { icon: "plans", label: "Plans", href: "/subscription", group: "Account", subtitle: "View & change the plan" },
+  { icon: "courses", label: "Courses", href: "/courses", group: "Learning", subtitle: "Browse, enrol & keep learning" },
+  { icon: "live-classes", label: "Live classes", href: "/live-classes", group: "Learning", subtitle: "Upcoming & recorded sessions" },
+  { icon: "workshops", label: "Workshops", href: "/workshops", group: "Learning", subtitle: "Workshops & webinars" },
+  { icon: "certificates", label: "Certificates", href: "/certificates", group: "Learning", subtitle: "Earned certificates" },
+  { icon: "learn", label: "Learn", href: "/articles", group: "Learning", subtitle: "Articles & guides" },
+  { icon: "reminders", label: "Reminders", href: "/reminders", group: "Wellness & support", subtitle: "Appointments, classes & due dates" },
+  { icon: "contributors", label: "Contributors", href: "/contributors", group: "Wellness & support", subtitle: "People who can help fill in data", selfOnly: true },
 
   // Account & settings (moved here from the Profile tab).
-  { icon: "lock-closed-outline", label: "Account & Security", href: "/account-security", tint: palette.primary50, fg: colors.navy, group: "Account", subtitle: "Password and devices" },
-  { icon: "people-outline", label: "Accounts", href: "/account-switcher", tint: colors.blueBg, fg: colors.blue, group: "Account", subtitle: "Switch or add an account" },
+  { icon: "security", label: "Account & Security", href: "/account-security", group: "Account", subtitle: "Password and devices" },
+  { icon: "accounts", label: "Accounts", href: "/account-switcher", group: "Account", subtitle: "Switch or add an account" },
   // Hidden for now — not shown in Explore. (Route /help still exists; re-enable
   // before store submission: privacy/terms/support are effectively required.)
-  // { icon: "help-circle-outline", label: "Help & Legal", href: "/help", tint: colors.greenBg, fg: colors.green, group: "Account", subtitle: "Support, privacy and terms" },
+  // { icon: "security", label: "Help & Legal", href: "/help", group: "Account", subtitle: "Support, privacy and terms" },
 ];
 
 /**

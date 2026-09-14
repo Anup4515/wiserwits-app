@@ -3,7 +3,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-import { colors, palette, spacing, radius, typography, shadow } from "@/theme";
+import { colors, spacing, radius, typography, shadow } from "@/theme";
+import { TileIcon, type TileIconName } from "@/components/icons/tile-icon";
 import { useAuth } from "@/auth/AuthContext";
 import { FEATURE, isFeatureLocked } from "@/lib/features";
 
@@ -20,9 +21,7 @@ import { FEATURE, isFeatureLocked } from "@/lib/features";
  * are always open.
  */
 interface Action {
-  icon: keyof typeof Ionicons.glyphMap;
-  tint: string;
-  fg: string;
+  icon: TileIconName;
   label: string;
   subtitle: string;
   href: Href;
@@ -35,44 +34,34 @@ interface Action {
 
 const ACTIONS: Action[] = [
   {
-    icon: "fitness-outline",
-    tint: colors.greenBg,
-    fg: colors.green,
+    icon: "bmi",
     label: "Log BMI",
     subtitle: "Record a new height & weight reading",
     href: "/log-bmi",
   },
   {
-    icon: "chatbubble-ellipses-outline",
-    tint: palette.accent100,
-    fg: palette.accent600,
+    icon: "ask-consultant",
     label: "Ask Consultant",
     subtitle: "Send a question to the consultant",
     href: "/ask-advice",
     feature: FEATURE.advice,
   },
   {
-    icon: "medkit-outline",
-    tint: colors.blueBg,
-    fg: colors.blue,
+    icon: "consultation",
     label: "Schedule Consultation",
     subtitle: "Schedule a doctor consultation",
     href: "/book-consultation",
     feature: FEATURE.health,
   },
   {
-    icon: "clipboard-outline",
-    tint: palette.primary50,
-    fg: colors.navy,
+    icon: "assignments",
     label: "Submit an assignment",
     subtitle: "Mark an assignment as done",
     href: "/assignments",
     feature: FEATURE.assignments,
   },
   {
-    icon: "people-outline",
-    tint: colors.amberBg,
-    fg: colors.amber,
+    icon: "contributors",
     label: "Invite a contributor",
     subtitle: "Let a parent or tutor help fill in data",
     href: "/invite-contributor",
@@ -106,8 +95,8 @@ export default function QuickActionsScreen() {
             accessibilityState={{ disabled: false }}
             accessibilityLabel={locked ? `${a.label} — locked, view plans` : a.label}
           >
-            <View style={[styles.icon, { backgroundColor: a.tint }, locked && styles.iconLocked]}>
-              <Ionicons name={a.icon} size={22} color={locked ? colors.textMuted : a.fg} />
+            <View style={styles.icon}>
+              <TileIcon name={a.icon} size={30} muted={locked} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.rowLabel, locked && styles.textLocked]}>{a.label}</Text>
@@ -146,14 +135,17 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   pressed: { opacity: 0.85 },
+  // Neutral plate — the 3D artwork carries the colour (see tile-icon).
   icon: {
     width: 44,
     height: 44,
     borderRadius: radius.md,
+    backgroundColor: colors.bg,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconLocked: { backgroundColor: colors.bg },
   rowLabel: { ...typography.h2, fontSize: 15, color: colors.ink },
   textLocked: { color: colors.textMuted },
   rowSub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },

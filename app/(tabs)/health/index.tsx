@@ -6,7 +6,8 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useHealth } from "@/api/hooks";
 import { bmiCategory } from "@/features/health/sections";
-import { gradients, colors, palette, spacing, radius, typography, shadow } from "@/theme";
+import { gradients, colors, spacing, radius, typography, shadow } from "@/theme";
+import { TileIcon, type TileIconName } from "@/components/icons/tile-icon";
 
 /**
  * Health hub (mirrors the Academics hub) — fans out to the BMI, consultations,
@@ -25,26 +26,26 @@ export default function HealthHub() {
 
   const items: {
     href: Href;
-    icon: keyof typeof Ionicons.glyphMap;
+    icon: TileIconName;
     label: string;
     desc: string;
   }[] = [
-    { href: "/(tabs)/health/bmi", icon: "body-outline", label: "Body mass index", desc: bmiDesc },
+    { href: "/(tabs)/health/bmi", icon: "bmi", label: "Body mass index", desc: bmiDesc },
     {
       href: "/(tabs)/health/consultations",
-      icon: "medkit-outline",
+      icon: "consultation",
       label: "Consultations",
       desc: countDesc(data?.consultations_count, "consultation", "Schedule a doctor consultation"),
     },
     {
       href: "/(tabs)/health/diet",
-      icon: "nutrition-outline",
+      icon: "diet",
       label: "Diet plans",
       desc: countDesc(data?.diet_plans_count, "diet plan", "Plans shared by the consultant"),
     },
     {
       href: "/(tabs)/health/labs",
-      icon: "flask-outline",
+      icon: "labs",
       label: "Lab reports",
       desc: countDesc(data?.lab_reports_count, "lab report", "Reports shared by the consultant"),
     },
@@ -67,7 +68,7 @@ export default function HealthHub() {
             style={({ pressed }) => [styles.row, pressed && { opacity: 0.9 }]}
           >
             <View style={styles.rowIc}>
-              <Ionicons name={it.icon} size={22} color={colors.navy} />
+              <TileIcon name={it.icon} size={30} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.rowLabel}>{it.label}</Text>
@@ -110,8 +111,10 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     ...shadow.card,
   },
+  // Neutral plate — the 3D artwork carries the colour (see tile-icon).
   rowIc: {
-    width: 46, height: 46, borderRadius: radius.md, backgroundColor: palette.primary50,
+    width: 46, height: 46, borderRadius: radius.md, backgroundColor: colors.bg,
+    borderWidth: 1, borderColor: colors.border,
     alignItems: "center", justifyContent: "center",
   },
   rowLabel: { ...typography.h2, fontSize: 15, color: colors.ink },

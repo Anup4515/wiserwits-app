@@ -13,6 +13,7 @@ import { SectionHeader, SourceBadge, EmptyState } from "@/components/data-ui";
 import { t } from "@/lib/copy";
 import { time12, pct, scoreColor, gradeColor, isGraded, shortMonth } from "@/lib/format";
 import { HOME_EXPLORE, type ExploreItem } from "@/lib/explore";
+import { TileIcon } from "@/components/icons/tile-icon";
 import { InsightsContent } from "@/features/insights/InsightsContent";
 import { EnrollmentSwitcher } from "@/features/enrollment/EnrollmentSwitcher";
 import { useSelectedEnrollment } from "@/features/enrollment/useSessionMonths";
@@ -669,8 +670,8 @@ function MarkRow({
 function ExploreTile({ item, onPress }: { item: ExploreItem; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] }]}>
-      <View style={[styles.tileIc, { backgroundColor: item.tint }]}>
-        <Ionicons name={item.icon} size={21} color={item.fg} />
+      <View style={styles.tileIc}>
+        <TileIcon name={item.icon} size={32} />
       </View>
       <Text style={styles.tileLabel} numberOfLines={1}>{item.label}</Text>
     </Pressable>
@@ -682,7 +683,7 @@ function ViewAllTile({ onPress }: { onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] }]}>
       <View style={[styles.tileIc, styles.viewAllIc]}>
-        <Ionicons name="ellipsis-horizontal" size={21} color={colors.navy} />
+        <TileIcon name="view-all" size={30} />
       </View>
       <Text style={styles.tileLabel} numberOfLines={1}>View all</Text>
     </Pressable>
@@ -786,15 +787,17 @@ const styles = StyleSheet.create({
   // Explore launcher
   exploreGrid: { flexDirection: "row", flexWrap: "wrap", rowGap: spacing.lg, columnGap: spacing.sm },
   tile: { width: "22%", alignItems: "center", gap: spacing.xs },
+  // The tile plate stays neutral white — the 3D artwork carries the colour, so
+  // a tinted plate underneath would only muddy it.
   tileIc: {
     width: 54, height: 54, borderRadius: radius.lg,
     alignItems: "center", justifyContent: "center",
-    ...shadow.card,
-  },
-  viewAllIc: {
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
+    ...shadow.card,
+  },
+  viewAllIc: {
     borderStyle: "dashed",
   },
   tileLabel: { ...typography.caption, color: colors.text, fontWeight: "600" },

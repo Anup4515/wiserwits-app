@@ -1,6 +1,5 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
-import ReactNativeBlobUtil from "react-native-blob-util";
 import { Alert, Platform } from "react-native";
 
 import { env } from "@/lib/env";
@@ -127,6 +126,44 @@ async function writeIntoFolder(dirUri: string, cacheUri: string, filename: strin
   });
 }
 
+/**
+ * Lazy, guarded access to `react-native-blob-util`.
+ *
+ * It is a NATIVE module, and its entry point reads `getConstants()` off the
+ * native binding at IMPORT time (`fs.js`). In Expo Go that binding is null, so a
+ * static `import` throws while the module is still being evaluated — and since
+ * `download.ts` is imported by the home tab and `<AuthedImage>`, that crashed the
+ * whole app at launch rather than at the point of use. Loading it lazily behind a
+ * try/catch (the same shape `lib/razorpay.ts` uses for its native module) keeps
+ * Expo Go usable: `load()` returns null there, `saveToMediaStore` reports
+ * "fallback", and downloads route through the SAF / share-sheet tiers below.
+ */
+interface MediaStoreModule {
+  MediaCollection: {
+    copyToMediaStore: (
+      meta: { name: string; parentFolder: string; mimeType: string },
+      collection: string,
+      path: string,
+    ) => Promise<unknown>;
+  };
+}
+
+let blobUtil: MediaStoreModule | null | undefined;
+
+function loadBlobUtil(): MediaStoreModule | null {
+  if (blobUtil !== undefined) return blobUtil;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require("react-native-blob-util") as
+      | MediaStoreModule
+      | { default: MediaStoreModule };
+    blobUtil = ("default" in mod ? mod.default : mod) ?? null;
+  } catch {
+    blobUtil = null;
+  }
+  return blobUtil;
+}
+
 /** Android 10 (API 29) is where MediaStore gained the Downloads collection. */
 const ANDROID_Q = 29;
 
@@ -147,9 +184,12 @@ const ANDROID_Q = 29;
  */
 async function saveToMediaStore(cacheUri: string, filename: string): Promise<true | "fallback"> {
   if (Platform.OS !== "android" || Number(Platform.Version) < ANDROID_Q) return "fallback";
+  // Absent in Expo Go — fall through to the SAF / share-sheet tiers.
+  const lib = loadBlobUtil();
+  if (!lib) return "fallback";
   const { mime } = splitName(filename);
   try {
-    await ReactNativeBlobUtil.MediaCollection.copyToMediaStore(
+    await lib.MediaCollection.copyToMediaStore(
       { name: filename, parentFolder: "", mimeType: mime },
       "Download",
       // The library wants a bare filesystem path, not a file:// URI.

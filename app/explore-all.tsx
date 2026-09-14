@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/auth/AuthContext";
 import { EXPLORE, EXPLORE_GROUP_ORDER, type ExploreItem } from "@/lib/explore";
+import { TileIcon } from "@/components/icons/tile-icon";
 import { Card } from "@/components/ui";
 import { colors, palette, spacing, radius, typography } from "@/theme";
 
@@ -63,8 +64,8 @@ function Row({ item, last, onPress }: { item: ExploreItem; last: boolean; onPres
       accessibilityRole="button"
       accessibilityLabel={item.label}
     >
-      <View style={[styles.rowIc, { backgroundColor: item.tint }]}>
-        <Ionicons name={item.icon} size={20} color={item.fg} />
+      <View style={styles.rowIc}>
+        <TileIcon name={item.icon} size={28} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.rowTitle}>{item.label}</Text>
@@ -103,10 +104,14 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.md },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
   pressed: { opacity: 0.6 },
+  // Neutral plate on a white card — the 3D artwork supplies the colour.
   rowIc: {
     width: 42,
     height: 42,
     borderRadius: radius.md,
+    backgroundColor: colors.bg,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },

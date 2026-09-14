@@ -255,7 +255,7 @@ export function BarRow({
 
 const styles = StyleSheet.create({
   ringCenter: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
   },

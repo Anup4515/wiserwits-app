@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, type Href } from "expo-router";
@@ -6,14 +7,17 @@ import { useReminders } from "@/api/hooks";
 import { QueryView } from "@/components/QueryView";
 import { Card } from "@/components/ui";
 import { EmptyState } from "@/components/data-ui";
+import { downloadAndSave, resolveFileUrl } from "@/lib/download";
 import { colors, palette, spacing, radius, typography } from "@/theme";
 import type { ReminderRow, ReminderType } from "@/api/student-types";
 
 /**
  * Reminders (unified agenda). One `/api/student/reminders` call returns the
- * student's live classes, workshops, assignments (due) and consultations,
- * already filtered (no cancelled / submitted), bucketed into Today / Upcoming /
- * Past. Each row deep-links to its source screen.
+ * student's consultant reminders (appointments / tests), live classes,
+ * workshops, assignments (due) and consultations, already filtered (no
+ * cancelled / submitted), bucketed into Today / Upcoming / Past. Each row
+ * deep-links to its source screen — except consultant reminders, which have no
+ * screen of their own and show their note + attachment inline.
  */
 
 const BUCKETS = [
@@ -24,8 +28,9 @@ const BUCKETS = [
 
 const TYPE_META: Record<
   ReminderType,
-  { icon: keyof typeof Ionicons.glyphMap; href: Href; label: string; tint: string; fg: string }
+  { icon: keyof typeof Ionicons.glyphMap; href: Href | null; label: string; tint: string; fg: string }
 > = {
+  appointment: { icon: "calendar-outline", href: null, label: "Consultant reminder", tint: palette.primary50, fg: colors.navy },
   consultation: { icon: "medkit-outline", href: "/(tabs)/health/consultations", label: "Consultation", tint: colors.greenBg, fg: colors.green },
   live_class: { icon: "videocam-outline", href: "/live-classes", label: "Live class", tint: colors.blueBg, fg: colors.blue },
   workshop: { icon: "easel-outline", href: "/workshops", label: "Workshop", tint: palette.accent100, fg: palette.accent600 },
@@ -58,7 +63,7 @@ export default function RemindersScreen() {
             <EmptyState
               icon="alarm-outline"
               title="No reminders yet"
-              subtitle="Your classes, workshops, assignments and consultations will show up here."
+              subtitle="Consultant reminders, classes, workshops, assignments and consultations will show up here."
             />
           ) : (
             <View style={{ gap: spacing.lg }}>
@@ -84,22 +89,54 @@ export default function RemindersScreen() {
 
 function ReminderCard({ row }: { row: ReminderRow }) {
   const router = useRouter();
-  const meta = TYPE_META[row.type];
+  const meta = TYPE_META[row.type] ?? TYPE_META.appointment;
+  const href = meta.href;
+  const fileUrl = resolveFileUrl(row.attachment);
+
+  const card = (
+    <Card style={styles.card}>
+      <View style={[styles.iconWrap, { backgroundColor: meta.tint }]}>
+        <Ionicons name={meta.icon} size={20} color={meta.fg} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.title} numberOfLines={1}>{row.title}</Text>
+        <Text style={styles.sub} numberOfLines={href ? 1 : 3}>
+          {meta.label}
+          {row.subtitle ? ` · ${row.subtitle}` : ""}
+        </Text>
+        {fileUrl ? <AttachmentButton url={fileUrl} /> : null}
+      </View>
+      <Text style={styles.when}>{formatWhen(row.when)}</Text>
+    </Card>
+  );
+
+  if (!href) return card;
   return (
-    <Pressable onPress={() => router.push(meta.href)} style={({ pressed }) => pressed && { opacity: 0.9 }}>
-      <Card style={styles.card}>
-        <View style={[styles.iconWrap, { backgroundColor: meta.tint }]}>
-          <Ionicons name={meta.icon} size={20} color={meta.fg} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title} numberOfLines={1}>{row.title}</Text>
-          <Text style={styles.sub} numberOfLines={1}>
-            {meta.label}
-            {row.subtitle ? ` · ${row.subtitle}` : ""}
-          </Text>
-        </View>
-        <Text style={styles.when}>{formatWhen(row.when)}</Text>
-      </Card>
+    <Pressable onPress={() => router.push(href)} style={({ pressed }) => pressed && { opacity: 0.9 }}>
+      {card}
+    </Pressable>
+  );
+}
+
+function AttachmentButton({ url }: { url: string }) {
+  const [busy, setBusy] = useState(false);
+  const ext = url.split("?")[0].match(/\.[a-z0-9]{2,5}$/i)?.[0] ?? "";
+  return (
+    <Pressable
+      disabled={busy}
+      hitSlop={6}
+      onPress={async () => {
+        setBusy(true);
+        try {
+          await downloadAndSave(url, `reminder-attachment${ext}`);
+        } finally {
+          setBusy(false);
+        }
+      }}
+      style={({ pressed }) => [styles.attach, (pressed || busy) && { opacity: 0.7 }]}
+    >
+      <Ionicons name="attach-outline" size={14} color={colors.info} />
+      <Text style={styles.attachText}>{busy ? "Downloading…" : "View attachment"}</Text>
     </Pressable>
   );
 }
@@ -115,4 +152,6 @@ const styles = StyleSheet.create({
   title: { ...typography.h2, fontSize: 15, color: colors.ink },
   sub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
   when: { ...typography.caption, color: colors.textMuted, textAlign: "right", flexShrink: 0 },
+  attach: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: spacing.xs, alignSelf: "flex-start" },
+  attachText: { ...typography.caption, color: colors.info, fontWeight: "700" },
 });

@@ -13,6 +13,7 @@ import {
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { File as FsFile } from "expo-file-system";
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 
 import { useProfile, useUpdateProfile, useUploadProfileImage, type ProfileUpdate } from "@/api/hooks";
@@ -194,11 +195,16 @@ function EditForm({ student, independent }: { student: StudentProfile; independe
     if (res.canceled) return;
     const asset = res.assets[0];
     const fd = new FormData();
-    fd.append("file", {
-      uri: asset.uri,
-      name: asset.fileName ?? "photo.jpg",
-      type: asset.mimeType ?? "image/jpeg",
-    } as unknown as Blob);
+    // SDK 56+ installs `expo/fetch` as the global fetch, and its multipart
+    // encoder refuses React Native's proprietary `{ uri, name, type }` part —
+    // "`uri` is not supported for React Native's FormData". It reads a part's
+    // bytes from a Blob (or anything exposing `bytes()`), so hand it an
+    // expo-file-system `File`, which implements Blob and carries the `name` and
+    // `type` the part headers need (the backend maps that content type to a
+    // stored extension, and Next.js only parses a part as a file when a
+    // filename is present). Sending the old shape now throws inside `doFetch`,
+    // where the catch-all would mislabel it "Network error. Please try again."
+    fd.append("file", new FsFile(asset.uri) as unknown as Blob);
     uploadImage.mutate(fd, {
       onError: (e) => Alert.alert("Upload failed", e.message),
     });

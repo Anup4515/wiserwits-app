@@ -9,7 +9,8 @@ import { useEnrollment } from "@/features/enrollment/EnrollmentContext";
 import { EnrollmentSwitcher } from "@/features/enrollment/EnrollmentSwitcher";
 import { SourceBadge } from "@/components/data-ui";
 import { hasFeature, FEATURE } from "@/lib/features";
-import { gradients, colors, palette, spacing, radius, typography, shadow } from "@/theme";
+import { gradients, colors, spacing, radius, typography, shadow } from "@/theme";
+import { TileIcon, type TileIconName } from "@/components/icons/tile-icon";
 
 /**
  * Academics hub (plan §7) — fans out to the read screens. Each row shows a
@@ -23,18 +24,18 @@ export default function AcademicsHub() {
 
   const items: {
     href: Href;
-    icon: keyof typeof Ionicons.glyphMap;
+    icon: TileIconName;
     label: string;
     desc: string;
     feature: string;
   }[] = [
-    { href: "/(tabs)/academics/notices", icon: "megaphone-outline", label: "Notices", desc: "Announcements from your school", feature: FEATURE.notices },
-    { href: "/(tabs)/academics/attendance", icon: "calendar-outline", label: "Attendance", desc: "Daily record & percentage", feature: FEATURE.attendance },
-    { href: "/(tabs)/academics/exams", icon: "reader-outline", label: "Exams & Marks", desc: "Results by exam and subject", feature: FEATURE.exams },
-    { href: "/(tabs)/academics/report", icon: "document-text-outline", label: "Report Card", desc: "Term summaries & grades", feature: FEATURE.report },
-    { href: "/(tabs)/academics/holistic", icon: "sparkles-outline", label: "Holistic", desc: "Development ratings by parameter", feature: FEATURE.holistic },
-    { href: "/(tabs)/academics/timetable", icon: "time-outline", label: "Timetable", desc: "Weekly class schedule", feature: FEATURE.timetable },
-    { href: "/(tabs)/academics/calendar", icon: "today-outline", label: "Calendar", desc: "Holidays, workshops & live classes", feature: FEATURE.calendar },
+    { href: "/(tabs)/academics/notices", icon: "notices", label: "Notices", desc: "Announcements from your school", feature: FEATURE.notices },
+    { href: "/(tabs)/academics/attendance", icon: "attendance", label: "Attendance", desc: "Daily record & percentage", feature: FEATURE.attendance },
+    { href: "/(tabs)/academics/exams", icon: "exams", label: "Exams & Marks", desc: "Results by exam and subject", feature: FEATURE.exams },
+    { href: "/(tabs)/academics/report", icon: "report", label: "Report Card", desc: "Term summaries & grades", feature: FEATURE.report },
+    { href: "/(tabs)/academics/holistic", icon: "holistic", label: "Holistic", desc: "Development ratings by parameter", feature: FEATURE.holistic },
+    { href: "/(tabs)/academics/timetable", icon: "timetable", label: "Timetable", desc: "Weekly class schedule", feature: FEATURE.timetable },
+    { href: "/(tabs)/academics/calendar", icon: "calendar", label: "Calendar", desc: "Holidays, workshops & live classes", feature: FEATURE.calendar },
   ];
 
   return (
@@ -63,7 +64,7 @@ export default function AcademicsHub() {
               style={({ pressed }) => [styles.row, pressed && { opacity: 0.9 }]}
             >
               <View style={styles.rowIc}>
-                <Ionicons name={it.icon} size={22} color={colors.navy} />
+                <TileIcon name={it.icon} size={30} muted={locked} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowLabel}>{it.label}</Text>
@@ -104,8 +105,10 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     ...shadow.card,
   },
+  // Neutral plate — the 3D artwork carries the colour (see tile-icon).
   rowIc: {
-    width: 46, height: 46, borderRadius: radius.md, backgroundColor: palette.primary50,
+    width: 46, height: 46, borderRadius: radius.md, backgroundColor: colors.bg,
+    borderWidth: 1, borderColor: colors.border,
     alignItems: "center", justifyContent: "center",
   },
   rowLabel: { ...typography.h2, fontSize: 15, color: colors.ink },
