@@ -42,22 +42,34 @@ interface CheckoutModule {
 
 let cached: CheckoutModule | null | undefined;
 
+/** Does `x` look like a real Razorpay checkout module (has a callable open)? */
+function looksUsable(x: unknown): x is CheckoutModule {
+  return !!x && typeof (x as { open?: unknown }).open === "function";
+}
+
 function load(): CheckoutModule | null {
   if (cached !== undefined) return cached;
   try {
     // Lazy require — importing statically would crash Expo Go at load time.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require("react-native-razorpay") as
-      | CheckoutModule
-      | { default: CheckoutModule };
-    cached = ("default" in mod ? mod.default : mod) ?? null;
+    const raw = require("react-native-razorpay") as unknown;
+    // Metro's ESM/CJS interop can hand back either the module directly OR a
+    // { default } wrapper — accept both, but ONLY when the resulting value
+    // actually has a callable `open`. Some environments (Expo Go, half-linked
+    // dev clients, stale bundles) return a truthy stub with no methods, which
+    // was crashing consumers with "cannot read property 'open' of null" the
+    // moment they tried to open checkout. Treat that as unavailable.
+    const wrapped = raw as { default?: unknown };
+    const picked = looksUsable(wrapped?.default) ? wrapped.default : raw;
+    cached = looksUsable(picked) ? picked : null;
   } catch {
     cached = null;
   }
   return cached;
 }
 
-/** True only in a dev/production build where the native module is linked. */
+/** True only in a dev/production build where the native module is linked
+ * AND exposes the expected `open` method. */
 export function isRazorpayAvailable(): boolean {
   return load() != null;
 }
@@ -77,7 +89,12 @@ export async function openRazorpayCheckout(
   options: RazorpayOptions
 ): Promise<RazorpaySuccess> {
   const checkout = load();
-  if (!checkout) throw new RazorpayUnavailableError();
+  // Belt-and-braces: load() already filters to a usable shape, but a caller
+  // that skips isRazorpayAvailable() shouldn't be able to crash on `.open`
+  // of a stale stub either.
+  if (!checkout || typeof checkout.open !== "function") {
+    throw new RazorpayUnavailableError();
+  }
   return checkout.open(options);
 }
 

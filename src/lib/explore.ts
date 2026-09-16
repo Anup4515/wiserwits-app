@@ -53,9 +53,7 @@ export const EXPLORE: ExploreItem[] = [
   // Account & settings (moved here from the Profile tab).
   { icon: "security", label: "Account & Security", href: "/account-security", group: "Account", subtitle: "Password and devices" },
   { icon: "accounts", label: "Accounts", href: "/account-switcher", group: "Account", subtitle: "Switch or add an account" },
-  // Hidden for now — not shown in Explore. (Route /help still exists; re-enable
-  // before store submission: privacy/terms/support are effectively required.)
-  // { icon: "security", label: "Help & Legal", href: "/help", group: "Account", subtitle: "Support, privacy and terms" },
+  { icon: "security", label: "Support", href: "/support", group: "Account", subtitle: "FAQs, contact us, privacy & terms" },
 ];
 
 /**

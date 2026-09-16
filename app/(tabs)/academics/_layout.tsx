@@ -1,28 +1,35 @@
-import { Stack } from "expo-router";
+import { Pressable, View } from "react-native";
+import { Stack, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/theme";
 
-/**
- * Anchor the stack to the hub (`index`). Without this, navigating STRAIGHT to a
- * sub-screen (e.g. Home's "Attendance" tile) makes that screen the only entry
- * in the stack — so there's no back chevron to return to the Academics hub.
- * With `index` as the anchor, the hub always sits beneath, so every sub-screen
- * gets a working back button.
- */
-export const unstable_settings = { initialRouteName: "index" };
+export const unstable_settings = { anchor: "index", initialRouteName: "index" };
 
-/**
- * Academics is a hub (plan §7): the tab shows a list of academic screens that
- * push onto this nested Stack. Headers are navy with white back chevrons.
- */
 export default function AcademicsLayout() {
+  const router = useRouter();
   return (
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: colors.navy },
+        headerLargeStyle: { backgroundColor: colors.navy },
         headerTintColor: colors.textInverse,
         headerTitleStyle: { fontWeight: "700" },
         headerBackButtonDisplayMode: "minimal",
+        headerBackTitle: "",
         contentStyle: { backgroundColor: colors.bg },
+        headerBackground: () => (
+          <View style={{ flex: 1, backgroundColor: colors.navy }} />
+        ),
+        headerLeft: () => (
+          <Pressable
+            onPress={() => (router.canGoBack() ? router.back() : router.replace("/(tabs)"))}
+            hitSlop={8}
+            style={({ pressed }) => pressed && { opacity: 0.6 }}
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.textInverse} />
+          </Pressable>
+        ),
       }}
     >
       <Stack.Screen name="index" options={{ title: "Academics", headerShown: false }} />

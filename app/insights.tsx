@@ -31,7 +31,10 @@ export default function InsightsScreen() {
           <Pressable
             onPress={() => (router.canGoBack() ? router.back() : router.replace("/(tabs)"))}
             hitSlop={8}
-            style={{ flexDirection: "row", alignItems: "center", marginBottom: spacing.sm }}
+            style={({ pressed }) => [
+              { flexDirection: "row", alignItems: "center", marginBottom: spacing.sm },
+              pressed && { opacity: 0.6 },
+            ]}
             accessibilityLabel="Go back"
           >
             <Ionicons name="chevron-back" size={22} color={colors.textInverse} />

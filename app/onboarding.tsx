@@ -6,13 +6,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { Button } from "@/components/ui";
 import { colors, spacing, typography } from "@/theme";
 
-/**
- * First-run onboarding (plan §7, execution Phase 1). Phase 1 scope: the
- * notification opt-in *intent*. The actual OS permission prompt + push-token
- * registration is wired in Phase 4 via the push client — `expo-notifications`
- * remote push was removed from Expo Go (SDK 53+) and needs a development build,
- * so we intentionally do NOT import it here. Copy is neutral/dual-audience (§9a).
- */
 export default function Onboarding() {
   const router = useRouter();
   const finish = () => router.replace("/(tabs)");
