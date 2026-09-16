@@ -125,6 +125,7 @@ export function TrendChart({
   color = colors.navy,
   domain = "fixed",
   formatValue = (v) => `${Math.round(v)}%`,
+  compare,
 }: {
   points: { label: string; value: number }[];
   height?: number;
@@ -138,6 +139,12 @@ export function TrendChart({
   domain?: "fixed" | "auto";
   /** Format for the value shown above each point (default a percentage). */
   formatValue?: (v: number) => string;
+  /**
+   * Optional second series drawn as a muted dashed line (e.g. class average).
+   * `values` align index-for-index with `points`; nulls are skipped. Values are
+   * not labelled — the main series keeps the numbers — and a legend is shown.
+   */
+  compare?: { values: (number | null)[]; label: string; seriesLabel: string; color?: string };
 }) {
   const [width, setWidth] = useState(0);
   if (points.length === 0) return null;
@@ -152,6 +159,12 @@ export function TrendChart({
   // Resolve the y-range. Auto fits the data (min span of 4 so a truly flat
   // series still sits mid-chart rather than exaggerating rounding noise).
   const values = points.map((p) => p.value);
+  const compareColor = compare?.color ?? palette.primary300;
+  const comparePts = (compare?.values ?? [])
+    .slice(0, points.length)
+    .map((v, i) => (v == null ? null : { i, v }))
+    .filter((p): p is { i: number; v: number } => p != null);
+  if (domain === "auto") values.push(...comparePts.map((p) => p.v));
   let minV = 0;
   let maxV = 100;
   if (domain === "auto") {
@@ -186,6 +199,19 @@ export function TrendChart({
               strokeWidth={1}
               strokeDasharray="3 4"
             />
+          ))}
+          {comparePts.length > 1 ? (
+            <Polyline
+              points={comparePts.map((p) => `${xFor(p.i)},${yFor(p.v)}`).join(" ")}
+              fill="none"
+              stroke={compareColor}
+              strokeWidth={2}
+              strokeDasharray="5 4"
+              strokeLinejoin="round"
+            />
+          ) : null}
+          {comparePts.map((p) => (
+            <Dot key={`c${p.i}`} cx={xFor(p.i)} cy={yFor(p.v)} r={2.5} fill={compareColor} />
           ))}
           <Polyline
             points={polyline}
@@ -223,6 +249,24 @@ export function TrendChart({
           </Text>
         ))}
       </View>
+      {compare ? (
+        <View style={styles.legend}>
+          <LegendKey color={color} label={compare.seriesLabel} />
+          <LegendKey color={compareColor} label={compare.label} dashed />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/** One swatch + label for a two-series chart legend. */
+export function LegendKey({ color, label, dashed }: { color: string; label: string; dashed?: boolean }) {
+  return (
+    <View style={styles.legendItem}>
+      <Svg width={18} height={6}>
+        <Line x1={1} x2={17} y1={3} y2={3} stroke={color} strokeWidth={2.5} strokeDasharray={dashed ? "4 3" : undefined} strokeLinecap="round" />
+      </Svg>
+      <Text style={styles.legendText}>{label}</Text>
     </View>
   );
 }
@@ -233,12 +277,19 @@ export function RadarChart({
   height = 290,
   color = colors.navy,
   pointColor,
+  compareValues,
 }: {
   axes: { label: string; value: number }[];
   height?: number;
   color?: string;
   /** Per-axis dot/value colour (e.g. score bands); defaults to `color`. */
   pointColor?: (value: number) => string;
+  /**
+   * Optional comparison shape (e.g. class average), aligned with `axes`, drawn
+   * as a dashed outline behind the main shape. Skipped unless every axis has a
+   * value — a gap would collapse that spoke to the centre and misread as 0.
+   */
+  compareValues?: (number | null)[];
 }) {
   const [width, setWidth] = useState(0);
   if (axes.length < 3) return null;
@@ -261,6 +312,10 @@ export function RadarChart({
     axes.map((_, i) => at(i, frac)).map((p) => `${p.x},${p.y}`).join(" ");
   const clamp = (v: number) => Math.max(0, Math.min(100, v)) / 100;
   const shape = axes.map((a, i) => at(i, clamp(a.value))).map((p) => `${p.x},${p.y}`).join(" ");
+  const compareShape =
+    compareValues && compareValues.length === axes.length && compareValues.every((v) => v != null)
+      ? compareValues.map((v, i) => at(i, clamp(v as number))).map((p) => `${p.x},${p.y}`).join(" ")
+      : null;
   // Wrap a label onto at most two ~12-char lines at word breaks, so long trait
   // names ("Creativity & Innovation") stay inside the card.
   const wrap = (s: string): string[] => {
@@ -299,6 +354,16 @@ export function RadarChart({
             const p = at(i, 1);
             return <Line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke={colors.border} strokeWidth={1} />;
           })}
+          {compareShape ? (
+            <Polygon
+              points={compareShape}
+              fill="none"
+              stroke={palette.primary300}
+              strokeWidth={2}
+              strokeDasharray="5 4"
+              strokeLinejoin="round"
+            />
+          ) : null}
           <Polygon
             points={shape}
             fill={color}
@@ -365,11 +430,14 @@ export function BarRow({
   value,
   color = colors.navy,
   valueLabel,
+  marker,
 }: {
   label: string;
   value: number;
   color?: string;
   valueLabel?: string;
+  /** Optional 0–100 reference tick on the track (e.g. class average). */
+  marker?: number | null;
 }) {
   const v = Math.max(0, Math.min(100, value));
   return (
@@ -379,6 +447,11 @@ export function BarRow({
       </Text>
       <View style={styles.barTrack}>
         <View style={[styles.barFill, { width: `${v}%`, backgroundColor: color }]} />
+        {marker != null ? (
+          <View
+            style={[styles.barMarker, { left: `${Math.max(0, Math.min(100, marker))}%` }]}
+          />
+        ) : null}
       </View>
       <Text style={styles.barValue}>{valueLabel ?? `${Math.round(v)}%`}</Text>
     </View>
@@ -407,5 +480,17 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   barFill: { height: "100%", borderRadius: 999 },
+  barMarker: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: 3,
+    marginLeft: -1.5,
+    backgroundColor: colors.ink,
+  },
+
+  legend: { flexDirection: "row", gap: spacing.md, marginTop: spacing.sm, paddingHorizontal: 6 },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  legendText: { ...typography.caption, color: colors.textMuted },
   barValue: { ...typography.label, color: colors.textMuted, width: 40, textAlign: "right" },
 });

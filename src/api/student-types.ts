@@ -196,6 +196,43 @@ export interface InsightsData {
     certificates: number;
     next_live_class: { id: number; title: string; start_time: string } | null;
   };
+  // "Me vs my class" — null for independent (self) students. Class figures are
+  // null when fewer than 5 classmates contribute (server-side privacy guard).
+  // Optional so older server builds (no `class` key) still type-check.
+  class?: ClassCompare | null;
+}
+
+export interface ClassCompare {
+  label: string;
+  size: number;
+  attendance: {
+    student_pct: number | null;
+    class_avg_pct: number | null;
+    top_band: 10 | 25 | 50 | null;
+    trend: { month: string; student_pct: number | null; class_pct: number | null }[];
+  };
+  rank: {
+    overall: number | null;
+    ranked_count: number;
+    previous_overall: number | null;
+    overall_pct: number | null;
+    class_avg_pct: number | null;
+    class_high_pct: number | null;
+  };
+  // Published exams, oldest first.
+  exams: {
+    exam_id: number;
+    name: string;
+    date: string | null;
+    student_pct: number | null;
+    class_avg_pct: number | null;
+    class_high_pct: number | null;
+    rank: number | null;
+    ranked_count: number;
+  }[];
+  subjects: { subject: string; student_pct: number; class_avg_pct: number | null; class_high_pct: number | null }[];
+  holistic: { name: string; student_pct: number; class_avg_pct: number | null }[];
+  highlights: { title: string; body: string; tone: "positive" | "warning" | "neutral" }[];
 }
 
 // ── Attendance (/attendance, /self/attendance) ──────────────────────────────

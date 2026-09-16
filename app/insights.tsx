@@ -5,18 +5,24 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 import { useInsights } from "@/api/hooks";
+import { QueryView } from "@/components/QueryView";
+import { Card } from "@/components/ui";
 import { InsightsContent } from "@/features/insights/InsightsContent";
-import { gradients, colors, spacing, radius } from "@/theme";
+import { ClassInsightsContent } from "@/features/insights/ClassInsightsContent";
+import { gradients, colors, spacing, radius, typography } from "@/theme";
 
 /**
- * Insights (mock 3) — dedicated screen. The cards live in <InsightsContent/>,
- * shared with the Home tab. This screen adds the navy hero + pull-to-refresh.
- * (React Query dedupes useInsights, so the hook here + inside InsightsContent
- * share one request.)
+ * Insights — dedicated screen. Enrolled students get the "me vs my class" view
+ * (<ClassInsightsContent/>, insights_class_compare_plan.md); independent
+ * students have no class, so they keep the personal cards in <InsightsContent/>
+ * (also used, unchanged, by the Home tab). React Query dedupes useInsights, so
+ * every hook call here shares one request.
  */
 export default function InsightsScreen() {
-  const { query } = useInsights();
+  const result = useInsights();
+  const { query } = result;
   const router = useRouter();
+  const cls = query.data?.class ?? null;
 
   return (
     <View style={styles.root}>
@@ -31,7 +37,9 @@ export default function InsightsScreen() {
             <Ionicons name="chevron-back" size={22} color={colors.textInverse} />
           </Pressable>
           <Text style={styles.heroTitle}>Insights</Text>
-          <Text style={styles.heroSub}>A quick read on how things are going</Text>
+          <Text style={styles.heroSub}>
+            {cls ? `${cls.label} · ${cls.size} students` : "A quick read on how things are going"}
+          </Text>
         </SafeAreaView>
       </LinearGradient>
 
@@ -42,7 +50,24 @@ export default function InsightsScreen() {
           <RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} />
         }
       >
-        <InsightsContent />
+        <QueryView result={result} feature="student insights">
+          {(data) =>
+            data.class ? (
+              <ClassInsightsContent data={data.class} />
+            ) : (
+              <>
+                {data.source === "enrolled" ? null : (
+                  <Card>
+                    <Text style={styles.note}>
+                      Class comparison appears once you are linked to your school.
+                    </Text>
+                  </Card>
+                )}
+                <InsightsContent />
+              </>
+            )
+          }
+        </QueryView>
       </ScrollView>
     </View>
   );
@@ -59,5 +84,6 @@ const styles = StyleSheet.create({
   heroTitle: { color: colors.textInverse, fontSize: 24, fontWeight: "800", marginTop: spacing.sm },
   heroSub: { color: "#b9c0e0", fontSize: 13, fontWeight: "600", marginTop: 3 },
   scroll: { flex: 1 },
+  note: { ...typography.caption, color: colors.textMuted },
   pad: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
 });
