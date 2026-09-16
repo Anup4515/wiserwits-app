@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import Svg, { Circle, Polyline, Line, Circle as Dot, Text as SvgText } from "react-native-svg";
+import Svg, { Circle, Polyline, Polygon, Line, G, Circle as Dot, Text as SvgText } from "react-native-svg";
 import { colors, palette, spacing, typography } from "@/theme";
 
 /**
@@ -223,6 +223,138 @@ export function TrendChart({
           </Text>
         ))}
       </View>
+    </View>
+  );
+}
+
+// ── RadarChart — several 0–100 scores as a spider web (needs ≥3 axes) ────────
+export function RadarChart({
+  axes,
+  height = 290,
+  color = colors.navy,
+  pointColor,
+}: {
+  axes: { label: string; value: number }[];
+  height?: number;
+  color?: string;
+  /** Per-axis dot/value colour (e.g. score bands); defaults to `color`. */
+  pointColor?: (value: number) => string;
+}) {
+  const [width, setWidth] = useState(0);
+  if (axes.length < 3) return null;
+
+  // Horizontal room is reserved for the labels that sit outside each spoke.
+  const labelPadX = 76;
+  const labelPadY = 44;
+  const cx = width / 2;
+  const cy = height / 2;
+  const r = Math.max(Math.min(width / 2 - labelPadX, height / 2 - labelPadY), 1);
+  const n = axes.length;
+
+  // First axis points straight up, then clockwise.
+  const angle = (i: number) => -Math.PI / 2 + (2 * Math.PI * i) / n;
+  const at = (i: number, frac: number) => ({
+    x: cx + r * frac * Math.cos(angle(i)),
+    y: cy + r * frac * Math.sin(angle(i)),
+  });
+  const ring = (frac: number) =>
+    axes.map((_, i) => at(i, frac)).map((p) => `${p.x},${p.y}`).join(" ");
+  const clamp = (v: number) => Math.max(0, Math.min(100, v)) / 100;
+  const shape = axes.map((a, i) => at(i, clamp(a.value))).map((p) => `${p.x},${p.y}`).join(" ");
+  // Wrap a label onto at most two ~12-char lines at word breaks, so long trait
+  // names ("Creativity & Innovation") stay inside the card.
+  const wrap = (s: string): string[] => {
+    const max = 12;
+    const lines: string[] = [];
+    let cur = "";
+    for (const word of s.split(/\s+/)) {
+      if (!cur) cur = word;
+      else if (`${cur} ${word}`.length <= max) cur = `${cur} ${word}`;
+      else {
+        lines.push(cur);
+        cur = word;
+      }
+    }
+    if (cur) lines.push(cur);
+    const out = lines.slice(0, 2);
+    if (lines.length > 2) out[1] = `${out[1]}…`;
+    return out.map((l) => (l.length > max + 1 ? `${l.slice(0, max)}…` : l));
+  };
+
+  return (
+    <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      {width > 0 ? (
+        <Svg width={width} height={height}>
+          {[0.25, 0.5, 0.75, 1].map((f) => (
+            <Polygon
+              key={f}
+              points={ring(f)}
+              fill="none"
+              stroke={colors.border}
+              strokeWidth={1}
+              strokeDasharray={f === 1 ? undefined : "3 4"}
+            />
+          ))}
+          {axes.map((_, i) => {
+            const p = at(i, 1);
+            return <Line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke={colors.border} strokeWidth={1} />;
+          })}
+          <Polygon
+            points={shape}
+            fill={color}
+            fillOpacity={0.16}
+            stroke={color}
+            strokeWidth={2}
+            strokeLinejoin="round"
+          />
+          {axes.map((a, i) => {
+            const p = at(i, clamp(a.value));
+            return <Dot key={i} cx={p.x} cy={p.y} r={4} fill={pointColor?.(a.value) ?? color} />;
+          })}
+          {axes.map((a, i) => {
+            const p = at(i, 1);
+            const cos = Math.cos(angle(i));
+            const sin = Math.sin(angle(i));
+            const anchor = cos > 0.3 ? "start" : cos < -0.3 ? "end" : "middle";
+            const x = p.x + cos * 8;
+            const lines = wrap(a.label);
+            const blockH = lines.length * 12 + 13;
+            // Top labels stack upward from the spoke tip, bottom ones downward,
+            // side ones centre on it.
+            const y =
+              sin < -0.3 ? p.y - blockH + 4 : sin > 0.3 ? p.y + 16 : p.y - blockH / 2 + 10;
+            return (
+              <G key={`l${i}`}>
+                {lines.map((line, j) => (
+                  <SvgText
+                    key={j}
+                    x={x}
+                    y={y + j * 12}
+                    fontSize={10.5}
+                    fontWeight="600"
+                    fill={colors.text}
+                    textAnchor={anchor}
+                  >
+                    {line}
+                  </SvgText>
+                ))}
+                <SvgText
+                  x={x}
+                  y={y + lines.length * 12 + 1}
+                  fontSize={11}
+                  fontWeight="800"
+                  fill={pointColor?.(a.value) ?? colors.ink}
+                  textAnchor={anchor}
+                >
+                  {`${Math.round(a.value)}%`}
+                </SvgText>
+              </G>
+            );
+          })}
+        </Svg>
+      ) : (
+        <View style={{ height }} />
+      )}
     </View>
   );
 }

@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter, type Href } from "expo-router";
+import { useRouter } from "expo-router";
 
 import { useReminders } from "@/api/hooks";
 import { QueryView } from "@/components/QueryView";
 import { Card } from "@/components/ui";
 import { EmptyState } from "@/components/data-ui";
 import { downloadAndSave, resolveFileUrl } from "@/lib/download";
-import { colors, palette, spacing, radius, typography } from "@/theme";
-import type { ReminderRow, ReminderType } from "@/api/student-types";
+import { REMINDER_TYPE_META as TYPE_META, formatReminderWhen as formatWhen } from "@/lib/reminders";
+import { colors, spacing, radius, typography } from "@/theme";
+import type { ReminderRow } from "@/api/student-types";
 
 /**
  * Reminders (unified agenda). One `/api/student/reminders` call returns the
@@ -25,27 +26,6 @@ const BUCKETS = [
   { key: "upcoming", label: "Upcoming" },
   { key: "past", label: "Past" },
 ] as const;
-
-const TYPE_META: Record<
-  ReminderType,
-  { icon: keyof typeof Ionicons.glyphMap; href: Href | null; label: string; tint: string; fg: string }
-> = {
-  appointment: { icon: "calendar-outline", href: null, label: "Consultant reminder", tint: palette.primary50, fg: colors.navy },
-  consultation: { icon: "medkit-outline", href: "/(tabs)/health/consultations", label: "Consultation", tint: colors.greenBg, fg: colors.green },
-  live_class: { icon: "videocam-outline", href: "/live-classes", label: "Live class", tint: colors.blueBg, fg: colors.blue },
-  workshop: { icon: "easel-outline", href: "/workshops", label: "Workshop", tint: palette.accent100, fg: palette.accent600 },
-  assignment: { icon: "clipboard-outline", href: "/assignments", label: "Assignment", tint: colors.amberBg, fg: colors.amber },
-};
-
-/** "Thu, 2 Jul · 3:30 PM" (IST) for a datetime, or "Thu, 2 Jul" for a date. */
-function formatWhen(when: string): string {
-  const d = new Date(when);
-  if (Number.isNaN(d.getTime())) return when;
-  const dateStr = d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
-  if (!when.includes("T")) return dateStr;
-  const timeStr = d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
-  return `${dateStr} · ${timeStr}`;
-}
 
 export default function RemindersScreen() {
   const result = useReminders();

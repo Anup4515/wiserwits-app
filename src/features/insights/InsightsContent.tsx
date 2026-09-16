@@ -6,7 +6,7 @@ import { useInsights } from "@/api/hooks";
 import { Card, Pill } from "@/components/ui";
 import { QueryView } from "@/components/QueryView";
 import { SourceBadge, SectionHeader, EmptyState, StatTile } from "@/components/data-ui";
-import { ProgressRing, TrendChart, BarRow } from "@/components/charts";
+import { ProgressRing, TrendChart, BarRow, RadarChart } from "@/components/charts";
 import { bmiCategory } from "@/features/health/sections";
 import { shortMonth, longMonth, scoreColor, pct } from "@/lib/format";
 import { colors, palette, spacing, typography } from "@/theme";
@@ -22,9 +22,15 @@ import type { InsightsData } from "@/api/student-types";
 export function InsightsContent({
   showSourceBadge = true,
   showInsightOfDay = true,
+  showRings = true,
+  showWellness = true,
 }: {
   showSourceBadge?: boolean;
   showInsightOfDay?: boolean;
+  /** The Overall grade + Attendance rings (hidden on Home). */
+  showRings?: boolean;
+  /** The Wellness (BMI / consultations) card (hidden on Home). */
+  showWellness?: boolean;
 } = {}) {
   const result = useInsights();
   return (
@@ -35,6 +41,8 @@ export function InsightsContent({
           source={source}
           showSourceBadge={showSourceBadge}
           showInsightOfDay={showInsightOfDay}
+          showRings={showRings}
+          showWellness={showWellness}
         />
       )}
     </QueryView>
@@ -46,11 +54,15 @@ function InsightsBody({
   source,
   showSourceBadge,
   showInsightOfDay,
+  showRings,
+  showWellness,
 }: {
   data: InsightsData;
   source: "enrolled" | "self";
   showSourceBadge: boolean;
   showInsightOfDay: boolean;
+  showRings: boolean;
+  showWellness: boolean;
 }) {
   const insight = data.insight_of_the_day;
   const insightTone =
@@ -83,29 +95,31 @@ function InsightsBody({
       ) : null}
 
       {/* Overall + attendance rings */}
-      <View style={styles.ringRow}>
-        <Card style={styles.ringCard}>
-          <Text style={styles.ringCap}>Overall</Text>
-          <ProgressRing
-            value={data.overall.percentage}
-            size={116}
-            color={colors.navy}
-            centerLabel={data.overall.grade ?? "—"}
-            centerSub={data.overall.percentage != null ? pct(data.overall.percentage) : "No marks"}
-          />
-          <Text style={styles.ringFoot}>{data.overall.exams_counted} subjects</Text>
-        </Card>
-        <Card style={styles.ringCard}>
-          <Text style={styles.ringCap}>Attendance</Text>
-          <ProgressRing
-            value={data.attendance.percentage}
-            size={116}
-            color={scoreColor(data.attendance.percentage)}
-            centerSub={`${data.attendance.present}/${data.attendance.total} days`}
-          />
-          <Text style={styles.ringFoot}>{source === "enrolled" ? "This session" : "Overall"}</Text>
-        </Card>
-      </View>
+      {showRings ? (
+        <View style={styles.ringRow}>
+          <Card style={styles.ringCard}>
+            <Text style={styles.ringCap}>Overall</Text>
+            <ProgressRing
+              value={data.overall.percentage}
+              size={116}
+              color={colors.navy}
+              centerLabel={data.overall.grade ?? "—"}
+              centerSub={data.overall.percentage != null ? pct(data.overall.percentage) : "No marks"}
+            />
+            <Text style={styles.ringFoot}>{data.overall.exams_counted} subjects</Text>
+          </Card>
+          <Card style={styles.ringCard}>
+            <Text style={styles.ringCap}>Attendance</Text>
+            <ProgressRing
+              value={data.attendance.percentage}
+              size={116}
+              color={scoreColor(data.attendance.percentage)}
+              centerSub={`${data.attendance.present}/${data.attendance.total} days`}
+            />
+            <Text style={styles.ringFoot}>{source === "enrolled" ? "This session" : "Overall"}</Text>
+          </Card>
+        </View>
+      ) : null}
 
       {/* Attendance trend */}
       <Card>
@@ -130,9 +144,17 @@ function InsightsBody({
           <SectionHeader title="Holistic development" />
           {data.holistic.month ? <Text style={styles.subtle}>{longMonth(data.holistic.month)}</Text> : null}
           <View style={{ height: spacing.sm }} />
-          {data.holistic.dimensions.map((d) => (
-            <BarRow key={d.name} label={d.name} value={d.pct} color={scoreColor(d.pct)} />
-          ))}
+          {/* Radar reads as a profile across traits; it needs 3+ axes to form a shape. */}
+          {data.holistic.dimensions.length >= 3 ? (
+            <RadarChart
+              axes={data.holistic.dimensions.map((d) => ({ label: d.name, value: d.pct }))}
+              pointColor={scoreColor}
+            />
+          ) : (
+            data.holistic.dimensions.map((d) => (
+              <BarRow key={d.name} label={d.name} value={d.pct} color={scoreColor(d.pct)} />
+            ))
+          )}
         </Card>
       ) : null}
 
@@ -161,7 +183,7 @@ function InsightsBody({
         </Card>
       ) : null}
 
-      {data.wellness ? <WellnessCard data={data.wellness} /> : null}
+      {showWellness && data.wellness ? <WellnessCard data={data.wellness} /> : null}
       {data.learning ? <LearningCard data={data.learning} /> : null}
 
       {data.overall.exams_counted === 0 && data.attendance.total === 0 ? (

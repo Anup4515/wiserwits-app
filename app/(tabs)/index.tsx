@@ -5,7 +5,8 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/auth/AuthContext";
-import { useDashboard, useTimetable } from "@/api/hooks";
+import { useDashboard, useReminders, useTimetable } from "@/api/hooks";
+import { ReminderCarousel } from "@/features/reminders/ReminderCarousel";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Avatar, Card } from "@/components/ui";
 import { resolveFileUrl } from "@/lib/download";
@@ -46,6 +47,9 @@ function todayLabel(): string {
   return `${WEEKDAYS[d.getDay()].slice(0, 3)}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 
+/** Periods listed on the Home classes card before "+N more · View timetable". */
+const HOME_MAX_PERIODS = 4;
+
 /** A single class row after both sources are normalised to one shape. */
 type DisplayClass = { key: string | number; time: string; subject: string; meta: string };
 
@@ -71,32 +75,6 @@ function nowMinutes(): number {
   return d.getHours() * 60 + d.getMinutes();
 }
 
-/** Parse "YYYY-MM-DD" as a LOCAL date (avoids the UTC-midnight day shift). */
-function parseYmd(ymd: string): Date {
-  const [y, m, d] = ymd.split("-").map(Number);
-  return new Date(y, (m ?? 1) - 1, d ?? 1);
-}
-
-/** "Today" / "Tomorrow" / "Wed, 6 Aug" for a local date. */
-function relDay(d: Date): string {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(d);
-  target.setHours(0, 0, 0, 0);
-  const n = Math.round((target.getTime() - today.getTime()) / 86400000);
-  if (n === 0) return "Today";
-  if (n === 1) return "Tomorrow";
-  return `${WEEKDAYS[d.getDay()].slice(0, 3)}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
-}
-
-/** "5:00 PM" from a Date. */
-function clock(d: Date): string {
-  let h = d.getHours();
-  const m = String(d.getMinutes()).padStart(2, "0");
-  const s = h >= 12 ? "PM" : "AM";
-  h = h % 12 || 12;
-  return `${h}:${m} ${s}`;
-}
 
 /**
  * Tomorrow's classes derived from the weekly timetable grid. Enrolled joins the
@@ -141,6 +119,7 @@ export default function Home() {
   const { user, accounts } = useAuth();
   const router = useRouter();
   const { query } = useDashboard();
+  const reminders = useReminders();
   const data = query.data;
   const firstName = user?.name?.split(" ")[0];
 
@@ -228,10 +207,18 @@ export default function Home() {
         contentContainerStyle={styles.pad}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} tintColor={colors.navy} />
+          <RefreshControl
+            refreshing={query.isRefetching}
+            onRefresh={() => {
+              query.refetch();
+              reminders.query.refetch();
+            }}
+            tintColor={colors.navy}
+          />
         }
       >
-        {/* Floating glance stats — overlap the hero's lower edge */}
+        {/* Glance stats (Attendance / Upcoming exams / Holistic) — hidden for now;
+            decision pending on whether to keep them. Uncomment to restore.
         <View style={styles.statRow}>
           <HeroStat
             label="Attendance"
@@ -259,6 +246,22 @@ export default function Home() {
             fg={palette.accent600}
             loading={query.isLoading}
           />
+        </View> */}
+
+        {/* Swipeable Today + Upcoming reminders; hides itself when empty. */}
+        <ReminderCarousel result={reminders} />
+
+        {/* Explore launcher — right under the reminders. Home shows two tidy rows: the curated
+            HOME_EXPLORE shortlist plus a "View all" tile that opens the
+            full list. See /explore-all. */}
+        <View>
+          <SectionHeader title="Explore" />
+          <View style={styles.exploreGrid}>
+            {HOME_EXPLORE.map((e) => (
+              <ExploreTile key={e.label} item={e} onPress={() => router.push(e.href)} />
+            ))}
+            <ViewAllTile onPress={() => router.push("/explore-all")} />
+          </View>
         </View>
 
         {query.isError ? (
@@ -277,20 +280,8 @@ export default function Home() {
 
         {/* Insights cards inline on Home (no header / source badge / insight-of-
             the-day — those live on the dedicated Insights screen). */}
-        <InsightsContent showSourceBadge={false} showInsightOfDay={false} />
+        <InsightsContent showSourceBadge={false} showInsightOfDay={false} showRings={false} showWellness={false} />
 
-        {/* Explore launcher — Home shows two tidy rows: the curated
-            HOME_EXPLORE shortlist plus a "View all" tile that opens the
-            full list. See /explore-all. */}
-        <View>
-          <SectionHeader title="Explore" />
-          <View style={styles.exploreGrid}>
-            {HOME_EXPLORE.map((e) => (
-              <ExploreTile key={e.label} item={e} onPress={() => router.push(e.href)} />
-            ))}
-            <ViewAllTile onPress={() => router.push("/explore-all")} />
-          </View>
-        </View>
       </ScrollView>
     </View>
   );
@@ -366,10 +357,7 @@ function HomeBody({
   const recentSelf = self?.recent_marks ?? [];
   const personal = data.personal;
 
-  // Tolerate an older backend that predates these fields (nullish fallbacks).
-  const liveClass = personal.next_live_class ?? null;
-  const reminder = personal.next_reminder ?? null;
-  const hasUpNext = liveClass != null || reminder != null;
+  // Tolerate an older backend that predates this field (nullish fallback).
   const courses = personal.enrolled_courses ?? [];
 
   // "Today's/Tomorrow's classes" only makes sense for the CURRENT session. When
@@ -422,6 +410,10 @@ function HomeBody({
   // not for a past session, which shows a note instead).
   const tt = useTimetable(showTomorrow && !isPastSession);
   const displayClasses = showTomorrow ? tomorrowClasses(tt.query.data, source) : todayDisplay;
+  // Keep the card compact: the first few periods, then a link to the full
+  // timetable for the rest.
+  const visibleClasses = displayClasses.slice(0, HOME_MAX_PERIODS);
+  const hiddenCount = displayClasses.length - visibleClasses.length;
   const cardTitle = showTomorrow ? "Tomorrow's classes" : "Today's classes";
   const loadingTomorrow = showTomorrow && tt.query.isLoading;
 
@@ -464,16 +456,30 @@ function HomeBody({
           />
         ) : (
           <View style={styles.timeline}>
-            {displayClasses.map((c, i) => (
+            {visibleClasses.map((c, i) => (
               <ClassRow
                 key={c.key}
                 time={c.time}
                 subject={c.subject}
                 meta={c.meta}
                 first={i === 0}
-                last={i === displayClasses.length - 1}
+                last={i === visibleClasses.length - 1}
               />
             ))}
+            {hiddenCount > 0 ? (
+              <Pressable
+                onPress={() => router.push("/(tabs)/academics/timetable")}
+                accessibilityRole="button"
+                accessibilityLabel={`${hiddenCount} more periods, view timetable`}
+                hitSlop={6}
+                style={({ pressed }) => [styles.moreRow, pressed && { opacity: 0.7 }]}
+              >
+                <Text style={styles.moreText}>
+                  +{hiddenCount} more {hiddenCount === 1 ? "period" : "periods"} · View timetable
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.navy} />
+              </Pressable>
+            ) : null}
           </View>
         )}
       </Card>
@@ -520,34 +526,6 @@ function HomeBody({
           })
         )}
       </Card>
-
-      {/* Up next — nearest live class + health appointment (learning + health) */}
-      {hasUpNext ? (
-        <Card style={{ gap: spacing.sm }}>
-          <SectionHeader title="Up next" />
-          {liveClass ? (
-            <UpNextRow
-              icon="videocam-outline"
-              tint={colors.redBg}
-              fg={colors.red}
-              title={liveClass.title}
-              meta={`${relDay(new Date(liveClass.start_time))} · ${clock(new Date(liveClass.start_time))}`}
-              onPress={() => router.push("/live-classes")}
-            />
-          ) : null}
-          {reminder ? (
-            <UpNextRow
-              icon="medkit-outline"
-              tint={colors.greenBg}
-              fg={colors.green}
-              title={reminder.title}
-              meta={relDay(parseYmd(reminder.appointment_date))}
-              onPress={() => router.push("/reminders")}
-              divider={liveClass != null}
-            />
-          ) : null}
-        </Card>
-      ) : null}
 
       {/* Continue learning — most recent enrolled courses */}
       {courses.length > 0 ? (
@@ -670,9 +648,7 @@ function MarkRow({
 function ExploreTile({ item, onPress }: { item: ExploreItem; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] }]}>
-      <View style={styles.tileIc}>
-        <TileIcon name={item.icon} size={32} />
-      </View>
+      <TileIcon name={item.icon} size={34} />
       <Text style={styles.tileLabel} numberOfLines={1}>{item.label}</Text>
     </Pressable>
   );
@@ -681,10 +657,8 @@ function ExploreTile({ item, onPress }: { item: ExploreItem; onPress: () => void
 /** The 8th Home tile: opens the full Explore list at /explore-all. */
 function ViewAllTile({ onPress }: { onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] }]}>
-      <View style={[styles.tileIc, styles.viewAllIc]}>
-        <TileIcon name="view-all" size={30} />
-      </View>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, styles.viewAllTile, pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] }]}>
+      <TileIcon name="view-all" size={32} />
       <Text style={styles.tileLabel} numberOfLines={1}>View all</Text>
     </Pressable>
   );
@@ -770,6 +744,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 5, minWidth: 68, alignItems: "center",
   },
   timeText: { ...typography.caption, color: colors.navy, fontWeight: "700" },
+  moreRow: {
+    flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start",
+    marginTop: spacing.sm, marginLeft: 12 + spacing.md, // line up with the time pills, past the rail
+  },
+  moreText: { ...typography.label, color: colors.navy, fontWeight: "700" },
   classSubject: { ...typography.label, color: colors.ink, fontSize: 13.5 },
   classMeta: { ...typography.caption, color: colors.textMuted, marginTop: 1 },
 
@@ -785,20 +764,26 @@ const styles = StyleSheet.create({
   gradeChipText: { color: "#fff", fontSize: 11, fontWeight: "800" },
 
   // Explore launcher
-  exploreGrid: { flexDirection: "row", flexWrap: "wrap", rowGap: spacing.lg, columnGap: spacing.sm },
-  tile: { width: "22%", alignItems: "center", gap: spacing.xs },
+  // Four square tiles per row (space-between spreads them edge to edge); the
+  // icon and label both sit INSIDE the tile, like the reference design.
+  exploreGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: spacing.sm + 2 },
   // The tile plate stays neutral white — the 3D artwork carries the colour, so
   // a tinted plate underneath would only muddy it.
-  tileIc: {
-    width: 54, height: 54, borderRadius: radius.lg,
-    alignItems: "center", justifyContent: "center",
+  tile: {
+    width: "23%",
+    aspectRatio: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 4,
+    borderRadius: radius.md,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
     ...shadow.card,
   },
-  viewAllIc: {
+  viewAllTile: {
     borderStyle: "dashed",
   },
-  tileLabel: { ...typography.caption, color: colors.text, fontWeight: "600" },
+  tileLabel: { ...typography.caption, fontSize: 11, color: colors.text, fontWeight: "600", textAlign: "center" },
 });

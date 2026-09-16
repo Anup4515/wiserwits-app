@@ -84,7 +84,7 @@ function RootNavigator() {
       <Stack.Screen name="account-security" options={{ title: "Account & Security" }} />
       <Stack.Screen name="profile-details" options={{ title: "Profile" }} />
       <Stack.Screen name="profile-edit" options={{ title: "Edit profile" }} />
-      <Stack.Screen name="explore-all" options={{ title: "Explore" }} />
+      <Stack.Screen name="explore-all" options={{ headerShown: false }} />
       <Stack.Screen name="help" options={{ title: "Help & Legal" }} />
 
       <Stack.Screen
