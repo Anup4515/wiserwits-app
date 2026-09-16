@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useChangePassword } from "@/api/hooks";
@@ -16,6 +17,7 @@ import { colors, spacing, typography } from "@/theme";
  * and must be revisited before store submission.
  */
 export default function AccountSecurityScreen() {
+  const router = useRouter();
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.pad}>
       <SectionHeader title="Change password" />
@@ -28,9 +30,20 @@ export default function AccountSecurityScreen() {
           <Text style={styles.deleteTitle}>Need to delete your account?</Text>
         </View>
         <Text style={styles.deleteBody}>
-          To request account deletion, contact support at support@wiserwits.com. We&apos;ll
-          remove your account and associated data.
+          Send us a request from the app and we&apos;ll remove your account and associated
+          data within 7 days.
         </Text>
+        <View style={{ marginTop: spacing.sm }}>
+          <Button
+            label="Request account deletion"
+            variant="secondary"
+            onPress={() =>
+              router.push(
+                "/support/contact?category=Account&subject=Delete%20my%20account",
+              )
+            }
+          />
+        </View>
       </Card>
     </ScrollView>
   );

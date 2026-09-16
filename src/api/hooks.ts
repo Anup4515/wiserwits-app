@@ -737,3 +737,61 @@ export function useChangePassword() {
     body: (v) => v,
   });
 }
+
+export interface SupportTicketDiagnostics {
+  app_version?: string;
+  platform?: string;
+  os_version?: string | number;
+  device?: string;
+  locale?: string;
+  student_id?: number;
+}
+
+export interface CreateSupportTicketVars {
+  category: "general" | "feature" | "bug" | "account" | "billing";
+  subject: string;
+  description: string;
+  diagnostics?: SupportTicketDiagnostics;
+}
+
+export interface CreateSupportTicketResponse {
+  ticket_id: number;
+  ticket_ref: string;
+  status: "open";
+  created_at: string;
+}
+
+/** Submit a support ticket from the mobile Contact form. Invalidates the
+ * `support-tickets` list so the "My tickets" screen shows the new row
+ * immediately on next mount. */
+export function useCreateSupportTicket() {
+  return useApiMutation<CreateSupportTicketResponse, CreateSupportTicketVars>({
+    path: "/api/student/support/tickets",
+    body: (v) => v,
+    invalidate: [["support-tickets"]],
+  });
+}
+
+export interface MyTicket {
+  id: number;
+  ticket_ref: string;
+  category: "general" | "feature" | "bug" | "account" | "billing";
+  subject: string;
+  body: string;
+  status: "open" | "in_progress" | "resolved" | "closed";
+  resolution_note: string | null;
+  resolved_at: string | null;
+  created_at: string;
+}
+
+/** The caller's own tickets, newest first. Backed by GET
+ * /api/student/support/tickets. Gated on active identity so the query doesn't
+ * fire during account-switch churn (matches useProfile's pattern). */
+export function useMyTickets(): UseQueryResult<{ items: MyTicket[] }> {
+  const { activeStudentId } = useAuth();
+  return useApiQuery<{ items: MyTicket[] }>(
+    ["support-tickets", activeStudentId],
+    "/api/student/support/tickets",
+    activeStudentId != null,
+  );
+}

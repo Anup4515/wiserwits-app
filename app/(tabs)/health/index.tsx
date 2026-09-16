@@ -55,6 +55,17 @@ export default function HealthHub() {
     <View style={styles.root}>
       <LinearGradient colors={gradients.navyHero} style={styles.hero}>
         <SafeAreaView edges={["top"]}>
+          <Pressable
+            onPress={() => (router.canGoBack() ? router.back() : router.replace("/(tabs)"))}
+            hitSlop={8}
+            style={({ pressed }) => [
+              { flexDirection: "row", alignItems: "center", marginBottom: spacing.sm },
+              pressed && { opacity: 0.6 },
+            ]}
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.textInverse} />
+          </Pressable>
           <Text style={styles.heroTitle}>Health</Text>
           <Text style={styles.heroSub}>BMI, consultations, diet & lab reports</Text>
         </SafeAreaView>

@@ -1,27 +1,35 @@
-import { Stack } from "expo-router";
+import { Pressable, View } from "react-native";
+import { Stack, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/theme";
 
-/**
- * Anchor the stack to the hub (`index`) — same rationale as Academics: a deep
- * push straight to a sub-screen (e.g. Home/Explore → Health BMI) still gets a
- * working back chevron to the Health hub.
- */
-export const unstable_settings = { initialRouteName: "index" };
+export const unstable_settings = { anchor: "index", initialRouteName: "index" };
 
-/**
- * Health is a hub tab (mirrors Academics): the tab shows a list of health
- * screens that push onto this nested Stack. Headers are navy with white back
- * chevrons.
- */
 export default function HealthLayout() {
+  const router = useRouter();
   return (
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: colors.navy },
+        headerLargeStyle: { backgroundColor: colors.navy },
         headerTintColor: colors.textInverse,
         headerTitleStyle: { fontWeight: "700" },
         headerBackButtonDisplayMode: "minimal",
+        headerBackTitle: "",
         contentStyle: { backgroundColor: colors.bg },
+        headerBackground: () => (
+          <View style={{ flex: 1, backgroundColor: colors.navy }} />
+        ),
+        headerLeft: () => (
+          <Pressable
+            onPress={() => (router.canGoBack() ? router.back() : router.replace("/(tabs)"))}
+            hitSlop={8}
+            style={({ pressed }) => pressed && { opacity: 0.6 }}
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.textInverse} />
+          </Pressable>
+        ),
       }}
     >
       <Stack.Screen name="index" options={{ title: "Health", headerShown: false }} />

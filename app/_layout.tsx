@@ -1,7 +1,8 @@
 import { useEffect } from "react";
-import { AppState, Platform, View, type AppStateStatus } from "react-native";
+import { AppState, Platform, Pressable, View, type AppStateStatus } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { Ionicons } from "@expo/vector-icons";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClientProvider, focusManager } from "@tanstack/react-query";
@@ -42,9 +43,25 @@ function RootNavigator() {
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: colors.navy },
+        headerLargeStyle: { backgroundColor: colors.navy },
         headerTintColor: colors.textInverse,
         headerTitleStyle: { fontWeight: "700" },
+        headerBackButtonDisplayMode: "minimal",
+        headerBackTitle: "",
         contentStyle: { backgroundColor: colors.bg },
+        headerBackground: () => (
+          <View style={{ flex: 1, backgroundColor: colors.navy }} />
+        ),
+        headerLeft: () => (
+          <Pressable
+            onPress={() => (router.canGoBack() ? router.back() : router.replace("/(tabs)"))}
+            hitSlop={8}
+            style={({ pressed }) => pressed && { opacity: 0.6 }}
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.textInverse} />
+          </Pressable>
+        ),
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -85,7 +102,10 @@ function RootNavigator() {
       <Stack.Screen name="profile-details" options={{ title: "Profile" }} />
       <Stack.Screen name="profile-edit" options={{ title: "Edit profile" }} />
       <Stack.Screen name="explore-all" options={{ title: "Explore" }} />
-      <Stack.Screen name="help" options={{ title: "Help & Legal" }} />
+      <Stack.Screen name="support" options={{ title: "Support" }} />
+      <Stack.Screen name="support/faq" options={{ title: "FAQs" }} />
+      <Stack.Screen name="support/contact" options={{ title: "Contact support" }} />
+      <Stack.Screen name="support/tickets" options={{ title: "My tickets" }} />
 
       <Stack.Screen
         name="quick-actions"
