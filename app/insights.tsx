@@ -1,10 +1,9 @@
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable } from "react-native";
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 
 import { useInsights } from "@/api/hooks";
+import { BackButton } from "@/components/BackButton";
 import { QueryView } from "@/components/QueryView";
 import { Card } from "@/components/ui";
 import { InsightsContent } from "@/features/insights/InsightsContent";
@@ -21,24 +20,13 @@ import { gradients, colors, spacing, radius, typography } from "@/theme";
 export default function InsightsScreen() {
   const result = useInsights();
   const { query } = result;
-  const router = useRouter();
   const cls = query.data?.class ?? null;
 
   return (
     <View style={styles.root}>
       <LinearGradient colors={gradients.navyHero} style={styles.hero}>
         <SafeAreaView edges={["top"]}>
-          <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace("/(tabs)"))}
-            hitSlop={8}
-            style={({ pressed }) => [
-              { flexDirection: "row", alignItems: "center", marginBottom: spacing.sm },
-              pressed && { opacity: 0.6 },
-            ]}
-            accessibilityLabel="Go back"
-          >
-            <Ionicons name="chevron-back" size={22} color={colors.textInverse} />
-          </Pressable>
+          <BackButton style={{ marginTop: spacing.sm, marginBottom: spacing.md }} />
           <Text style={styles.heroTitle}>Insights</Text>
           <Text style={styles.heroSub}>
             {cls ? `${cls.label} · ${cls.size} students` : "A quick read on how things are going"}

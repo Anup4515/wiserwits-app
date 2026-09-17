@@ -1,8 +1,7 @@
 import { useEffect } from "react";
-import { AppState, Platform, Pressable, View, type AppStateStatus } from "react-native";
+import { AppState, Platform, View, type AppStateStatus } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Ionicons } from "@expo/vector-icons";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClientProvider, focusManager } from "@tanstack/react-query";
@@ -11,6 +10,7 @@ import { queryClient } from "@/lib/query-client";
 import { colors } from "@/theme";
 import { AuthProvider, useAuth } from "@/auth/AuthContext";
 import { EnrollmentProvider } from "@/features/enrollment/EnrollmentContext";
+import { HeaderBackButton } from "@/components/BackButton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { track } from "@/lib/analytics";
@@ -52,16 +52,11 @@ function RootNavigator() {
         headerBackground: () => (
           <View style={{ flex: 1, backgroundColor: colors.navy }} />
         ),
-        headerLeft: () => (
-          <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace("/(tabs)"))}
-            hitSlop={8}
-            style={({ pressed }) => pressed && { opacity: 0.6 }}
-            accessibilityLabel="Go back"
-          >
-            <Ionicons name="chevron-back" size={22} color={colors.textInverse} />
-          </Pressable>
-        ),
+        headerLeft: () => <HeaderBackButton />,
+        // Our headerLeft doesn't replace the native back arrow, only covers it:
+        // it stayed underneath and flashed into view while a screen was
+        // popping (the custom button unmounts before the animation ends).
+        headerBackVisible: false,
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />

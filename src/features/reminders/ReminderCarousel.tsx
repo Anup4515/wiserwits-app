@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, Pressable, FlatList, useWindowDimensions } from
 import { useRouter } from "expo-router";
 
 import { SectionHeader } from "@/components/data-ui";
+import { useOpenInTab } from "@/lib/tab-nav";
 import { REMINDER_TYPE_META, relativeReminderWhen } from "@/lib/reminders";
 import { colors, spacing, radius, typography } from "@/theme";
 import type { SourceQueryResult } from "@/api/query";
@@ -62,7 +63,7 @@ export function ReminderCarousel({ result }: { result: SourceQueryResult<Reminde
 }
 
 function ReminderSlide({ row, width }: { row: ReminderRow; width: number }) {
-  const router = useRouter();
+  const openInTab = useOpenInTab();
   const meta = REMINDER_TYPE_META[row.type] ?? REMINDER_TYPE_META.appointment;
   const when = relativeReminderWhen(row.when);
   // Consultant reminders have no screen of their own — their note and
@@ -74,7 +75,7 @@ function ReminderSlide({ row, width }: { row: ReminderRow; width: number }) {
 
   return (
     <Pressable
-      onPress={() => router.push(href)}
+      onPress={() => openInTab(href)}
       accessibilityRole="button"
       accessibilityLabel={`${meta.label}, ${row.title}, ${when}`}
       style={({ pressed }) => [

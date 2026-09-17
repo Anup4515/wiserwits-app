@@ -1,6 +1,6 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
-import { Alert, Platform } from "react-native";
+import { Alert, Platform, TurboModuleRegistry } from "react-native";
 
 import { env } from "@/lib/env";
 import { storage } from "@/auth/secure-storage";
@@ -137,6 +137,10 @@ async function writeIntoFolder(dirUri: string, cacheUri: string, filename: strin
  * try/catch (the same shape `lib/razorpay.ts` uses for its native module) keeps
  * Expo Go usable: `load()` returns null there, `saveToMediaStore` reports
  * "fallback", and downloads route through the SAF / share-sheet tiers below.
+ *
+ * The try/catch alone isn't enough in development: Metro still reports the
+ * import-time TypeError as a red-box error even though we catch it. So check
+ * for the native binding first and never evaluate the module without it.
  */
 interface MediaStoreModule {
   MediaCollection: {
@@ -152,6 +156,11 @@ let blobUtil: MediaStoreModule | null | undefined;
 
 function loadBlobUtil(): MediaStoreModule | null {
   if (blobUtil !== undefined) return blobUtil;
+  // Same lookup the library does at import; null in Expo Go.
+  if (!TurboModuleRegistry.get("ReactNativeBlobUtil")) {
+    blobUtil = null;
+    return blobUtil;
+  }
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require("react-native-blob-util") as

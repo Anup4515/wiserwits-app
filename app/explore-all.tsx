@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/auth/AuthContext";
 import { EXPLORE, EXPLORE_GROUP_ORDER, type ExploreGroup, type ExploreItem } from "@/lib/explore";
 import { TileIcon, type TileIconName } from "@/components/icons/tile-icon";
+import { BackButton, HEADER_BUTTON_SIZE } from "@/components/BackButton";
 import { EmptyState } from "@/components/data-ui";
 import { colors, gradients, palette, spacing, radius, shadow, typography } from "@/theme";
 
@@ -72,15 +73,7 @@ export default function ExploreAll() {
         <View style={styles.glow2} />
         <SafeAreaView edges={["top"]}>
           <View style={styles.headerRow}>
-            <Pressable
-              onPress={() => router.back()}
-              hitSlop={8}
-              style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-            >
-              <Ionicons name="arrow-back" size={22} color={colors.textInverse} />
-            </Pressable>
+            <BackButton />
             <View style={{ flex: 1 }}>
               <Text style={styles.title}>Explore</Text>
               <Text style={styles.subtitle} numberOfLines={1}>Discover tools, resources and more</Text>
@@ -118,15 +111,6 @@ export default function ExploreAll() {
             </Pressable>
           ) : null}
         </View>
-        {/* Content search (courses, articles) lives on its own screen. */}
-        <Pressable
-          onPress={() => router.push("/search")}
-          style={({ pressed }) => [styles.searchSide, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel="Search courses and articles"
-        >
-          <Ionicons name="options-outline" size={20} color={colors.navy} />
-        </Pressable>
       </View>
 
       <ScrollView
@@ -228,11 +212,14 @@ const styles = StyleSheet.create({
     left: -60, top: -40, backgroundColor: "rgba(255,255,255,0.04)",
   },
   headerRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingTop: spacing.md },
+  // Matches <BackButton> so the two header buttons read as a pair.
   headerBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    width: HEADER_BUTTON_SIZE,
+    height: HEADER_BUTTON_SIZE,
+    borderRadius: HEADER_BUTTON_SIZE / 2,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -263,14 +250,6 @@ const styles = StyleSheet.create({
     backgroundColor: palette.primary50,
   },
   searchInput: { flex: 1, ...typography.body, color: colors.ink, paddingVertical: 0 },
-  searchSide: {
-    width: 46,
-    height: 46,
-    borderRadius: radius.lg,
-    backgroundColor: palette.primary50,
-    alignItems: "center",
-    justifyContent: "center",
-  },
 
   scroll: { flex: 1 },
   container: { padding: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg },

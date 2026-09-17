@@ -5,16 +5,15 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   ScrollView,
-  Pressable,
   Keyboard,
   TextInput,
   type LayoutChangeEvent,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
+import { BackButton } from "@/components/BackButton";
 import { Brand } from "@/components/ui";
 import { KeyboardRevealContext, type FocusedInput } from "@/components/keyboard-reveal";
 import { gradients, colors, spacing, radius, typography } from "@/theme";
@@ -123,9 +122,7 @@ export function AuthScaffold({
             >
               <View ref={contentRef} style={styles.fill} collapsable={false}>
                 {router.canGoBack() ? (
-                  <Pressable onPress={() => router.back()} hitSlop={10} style={styles.back}>
-                    <Ionicons name="chevron-back" size={26} color={colors.textInverse} />
-                  </Pressable>
+                  <BackButton onPress={() => router.back()} style={styles.back} />
                 ) : null}
                 <View style={styles.top}>
                   <Brand size={58} />
@@ -157,7 +154,7 @@ const styles = StyleSheet.create({
     right: -120,
     backgroundColor: "rgba(240,194,39,0.12)",
   },
-  back: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, alignSelf: "flex-start" },
+  back: { marginLeft: spacing.lg, marginTop: spacing.sm },
   top: {
     flexGrow: 1,
     alignItems: "center",

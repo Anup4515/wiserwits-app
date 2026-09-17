@@ -14,6 +14,7 @@ import { SectionHeader, SourceBadge, EmptyState } from "@/components/data-ui";
 import { t } from "@/lib/copy";
 import { time12, pct, scoreColor, gradeColor, isGraded, shortMonth } from "@/lib/format";
 import { HOME_EXPLORE, type ExploreItem } from "@/lib/explore";
+import { useOpenInTab } from "@/lib/tab-nav";
 import { TileIcon } from "@/components/icons/tile-icon";
 import { InsightsContent } from "@/features/insights/InsightsContent";
 import { EnrollmentSwitcher } from "@/features/enrollment/EnrollmentSwitcher";
@@ -118,6 +119,7 @@ function tomorrowClasses(
 export default function Home() {
   const { user, accounts } = useAuth();
   const router = useRouter();
+  const openInTab = useOpenInTab();
   const { query } = useDashboard();
   const reminders = useReminders();
   const data = query.data;
@@ -258,7 +260,7 @@ export default function Home() {
           <SectionHeader title="Explore" />
           <View style={styles.exploreGrid}>
             {HOME_EXPLORE.map((e) => (
-              <ExploreTile key={e.label} item={e} onPress={() => router.push(e.href)} />
+              <ExploreTile key={e.label} item={e} onPress={() => openInTab(e.href)} />
             ))}
             <ViewAllTile onPress={() => router.push("/explore-all")} />
           </View>
@@ -353,6 +355,7 @@ function HomeBody({
   source: "enrolled" | "self";
 }) {
   const router = useRouter();
+  const openInTab = useOpenInTab();
   const recent = school?.recent_marks ?? [];
   const recentSelf = self?.recent_marks ?? [];
   const personal = data.personal;
@@ -437,7 +440,7 @@ function HomeBody({
               subtitle="There's no live schedule for a past session. Open the timetable to see this class's full weekly schedule."
             />
             <Pressable
-              onPress={() => router.push("/(tabs)/academics/timetable")}
+              onPress={() => openInTab("/(tabs)/academics/timetable")}
               accessibilityRole="button"
               accessibilityLabel="View timetable"
               style={{ flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "center" }}
@@ -468,7 +471,7 @@ function HomeBody({
             ))}
             {hiddenCount > 0 ? (
               <Pressable
-                onPress={() => router.push("/(tabs)/academics/timetable")}
+                onPress={() => openInTab("/(tabs)/academics/timetable")}
                 accessibilityRole="button"
                 accessibilityLabel={`${hiddenCount} more periods, view timetable`}
                 hitSlop={6}
@@ -489,7 +492,7 @@ function HomeBody({
         <SectionHeader
           title="Recent marks"
           action="See all"
-          onAction={() => router.push("/(tabs)/academics/exams")}
+          onAction={() => openInTab("/(tabs)/academics/exams")}
         />
         {source === "enrolled" ? (
           recent.length === 0 ? (

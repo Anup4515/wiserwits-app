@@ -8,6 +8,7 @@ import { useHealth } from "@/api/hooks";
 import { bmiCategory } from "@/features/health/sections";
 import { gradients, colors, spacing, radius, typography, shadow } from "@/theme";
 import { TileIcon, type TileIconName } from "@/components/icons/tile-icon";
+import { BackButton } from "@/components/BackButton";
 
 /**
  * Health hub (mirrors the Academics hub) — fans out to the BMI, consultations,
@@ -55,17 +56,7 @@ export default function HealthHub() {
     <View style={styles.root}>
       <LinearGradient colors={gradients.navyHero} style={styles.hero}>
         <SafeAreaView edges={["top"]}>
-          <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace("/(tabs)"))}
-            hitSlop={8}
-            style={({ pressed }) => [
-              { flexDirection: "row", alignItems: "center", marginBottom: spacing.sm },
-              pressed && { opacity: 0.6 },
-            ]}
-            accessibilityLabel="Go back"
-          >
-            <Ionicons name="chevron-back" size={22} color={colors.textInverse} />
-          </Pressable>
+          <BackButton style={{ marginTop: spacing.sm, marginBottom: spacing.md }} />
           <Text style={styles.heroTitle}>Health</Text>
           <Text style={styles.heroSub}>BMI, consultations, diet & lab reports</Text>
         </SafeAreaView>

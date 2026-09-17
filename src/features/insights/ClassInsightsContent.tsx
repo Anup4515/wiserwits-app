@@ -235,7 +235,7 @@ function SubjectsCard({ data }: { data: ClassCompare }) {
             <Text style={[styles.classLineYou, { color: scoreColor(s.student_pct) }]}>
               You {pct(s.student_pct)}
             </Text>
-            {"  ·  "}Class avg {pct(s.class_avg_pct)}{"  ·  "}Class high {pct(s.class_high_pct)}
+            {"  ·  "}Class avg {pct(s.class_avg_pct)}
           </Text>
         </View>
       ))}

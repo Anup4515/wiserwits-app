@@ -34,7 +34,6 @@ export const EXPLORE: ExploreItem[] = [
   { icon: "activity", label: "Activity", href: "/feed", group: "Wellness & support", subtitle: "Recent updates & alerts" },
   { icon: "attendance", label: "Attendance", href: "/(tabs)/academics/attendance", group: "Academics", subtitle: "Daily presence & monthly %" },
   { icon: "exams", label: "Exams", href: "/(tabs)/academics/exams", group: "Academics", subtitle: "Marks & upcoming exams" },
-  { icon: "assignments", label: "Assignments", href: "/assignments", group: "Academics", subtitle: "Tasks & submissions" },
   { icon: "health", label: "Health", href: "/(tabs)/health", group: "Wellness & support", subtitle: "BMI, consultations, diet & labs" },
   { icon: "advice", label: "Advice", href: "/advice", group: "Wellness & support", subtitle: "Ask Consultant, read feedback" },
   { icon: "report", label: "Report", href: "/(tabs)/academics/report", group: "Academics", subtitle: "Report card & holistic ratings" },
@@ -47,6 +46,7 @@ export const EXPLORE: ExploreItem[] = [
   { icon: "workshops", label: "Workshops", href: "/workshops", group: "Learning", subtitle: "Workshops & webinars" },
   { icon: "certificates", label: "Certificates", href: "/certificates", group: "Learning", subtitle: "Earned certificates" },
   { icon: "learn", label: "Learn", href: "/articles", group: "Learning", subtitle: "Articles & guides" },
+  { icon: "assignments", label: "Assignments", href: "/assignments", group: "Learning", subtitle: "Tasks & submissions" },
   { icon: "reminders", label: "Reminders", href: "/reminders", group: "Wellness & support", subtitle: "Appointments, classes & due dates" },
   { icon: "contributors", label: "Contributors", href: "/contributors", group: "Wellness & support", subtitle: "People who can help fill in data", selfOnly: true },
 

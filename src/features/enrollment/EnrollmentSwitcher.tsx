@@ -60,7 +60,15 @@ export function EnrollmentSwitcher() {
             {classSub(selected)}
           </Text>
         </View>
-        {selected.is_current ? null : <View style={styles.pastDot} />}
+        {selected.is_current ? (
+          <View style={styles.triggerCurrentChip}>
+            <Text style={styles.triggerCurrentChipText}>Current</Text>
+          </View>
+        ) : (
+          <View style={styles.pastChip}>
+            <Text style={styles.pastChipText}>Past</Text>
+          </View>
+        )}
         <Ionicons name="chevron-down" size={16} color={colors.textInverse} />
       </Pressable>
 
@@ -95,7 +103,11 @@ export function EnrollmentSwitcher() {
                           <View style={styles.currentChip}>
                             <Text style={styles.currentChipText}>Current</Text>
                           </View>
-                        ) : null}
+                        ) : (
+                          <View style={styles.pastChip}>
+                            <Text style={styles.pastChipText}>Past</Text>
+                          </View>
+                        )}
                       </View>
                       <Text style={styles.optionSub}>{classSub(r)}</Text>
                       {r.roll_number != null ? (
@@ -140,7 +152,14 @@ const styles = StyleSheet.create({
   },
   triggerTitle: { color: colors.textInverse, fontSize: 13.5, fontWeight: "700" },
   triggerSub: { color: "rgba(255,255,255,0.75)", fontSize: 11.5, marginTop: 1 },
-  pastDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.gold },
+  // The trigger sits on navy, so its Current chip is light instead of navy.
+  triggerCurrentChip: {
+    backgroundColor: colors.textInverse,
+    borderRadius: radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  triggerCurrentChipText: { color: colors.navy, fontSize: 10, fontWeight: "700" },
 
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
   sheet: {
@@ -188,4 +207,12 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   currentChipText: { color: colors.textInverse, fontSize: 10, fontWeight: "700" },
+  // Gold, so a past class stands out from the current one.
+  pastChip: {
+    backgroundColor: colors.gold,
+    borderRadius: radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  pastChipText: { color: colors.navy, fontSize: 10, fontWeight: "700" },
 });

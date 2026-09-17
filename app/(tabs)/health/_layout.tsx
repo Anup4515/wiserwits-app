@@ -1,12 +1,11 @@
-import { Pressable, View } from "react-native";
-import { Stack, useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { View } from "react-native";
+import { Stack } from "expo-router";
+import { HeaderBackButton } from "@/components/BackButton";
 import { colors } from "@/theme";
 
 export const unstable_settings = { anchor: "index", initialRouteName: "index" };
 
 export default function HealthLayout() {
-  const router = useRouter();
   return (
     <Stack
       screenOptions={{
@@ -20,16 +19,11 @@ export default function HealthLayout() {
         headerBackground: () => (
           <View style={{ flex: 1, backgroundColor: colors.navy }} />
         ),
-        headerLeft: () => (
-          <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace("/(tabs)"))}
-            hitSlop={8}
-            style={({ pressed }) => pressed && { opacity: 0.6 }}
-            accessibilityLabel="Go back"
-          >
-            <Ionicons name="chevron-back" size={22} color={colors.textInverse} />
-          </Pressable>
-        ),
+        headerLeft: () => <HeaderBackButton />,
+        // Our headerLeft doesn't replace the native back arrow, only covers it:
+        // it stayed underneath and flashed into view while a screen was
+        // popping (the custom button unmounts before the animation ends).
+        headerBackVisible: false,
       }}
     >
       <Stack.Screen name="index" options={{ title: "Health", headerShown: false }} />

@@ -3,6 +3,7 @@ import { View, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, palette } from "@/theme";
+import { resetTabTo } from "@/lib/tab-nav";
 
 /**
  * 5-slot tab bar (plan §7). Phase 1 ships Home + Profile as functional and
@@ -94,17 +95,16 @@ export default function TabsLayout() {
             <Ionicons name={focused ? "school" : "school-outline"} color={color} size={size} />
           ),
         }}
-        listeners={{
-          // Always land on the Academics hub when the tab is tapped. Without
-          // this, a sub-screen reached via a Home "Explore" deep-link
-          // (router.push to /(tabs)/academics/attendance) can leave the user
-          // stranded with no back route to the hub — the nested stack's
-          // initialRouteName anchor isn't guaranteed across a cross-tab push.
+        listeners={({ navigation }) => ({
+          // Always land on the Academics hub when the tab is tapped, with the
+          // stack reset to just the hub. Navigating to "/(tabs)/academics"
+          // instead would push the hub on top of whatever sub-screens a Home
+          // deep-link left behind, so back would walk into those.
           tabPress: (e) => {
             e.preventDefault();
-            router.navigate("/(tabs)/academics");
+            resetTabTo(navigation, "academics", "index");
           },
-        }}
+        })}
       />
       <Tabs.Screen
         name="health"
@@ -115,15 +115,13 @@ export default function TabsLayout() {
             <Ionicons name={focused ? "heart" : "heart-outline"} color={color} size={size} />
           ),
         }}
-        listeners={{
-          // Always land on the Health hub when the tab is tapped, so a sub-screen
-          // reached via a Home/Explore deep-link never strands the user without a
-          // route back to the hub (same rationale as the Academics tab).
+        listeners={({ navigation }) => ({
+          // Same as the Academics tab: land on the hub with a fresh stack.
           tabPress: (e) => {
             e.preventDefault();
-            router.navigate("/(tabs)/health");
+            resetTabTo(navigation, "health", "index");
           },
-        }}
+        })}
       />
     </Tabs>
   );
