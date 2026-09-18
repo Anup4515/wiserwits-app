@@ -25,6 +25,7 @@ const ICONS = {
   calendar: require("../../../assets/icons3d/calendar.png"),
   insights: require("../../../assets/icons3d/insights.png"),
   plans: require("../../../assets/icons3d/plans.png"),
+  "future-saving-planner": require("../../../assets/icons3d/future-saving-planner.png"),
   courses: require("../../../assets/icons3d/courses.png"),
   "live-classes": require("../../../assets/icons3d/live-classes.png"),
   workshops: require("../../../assets/icons3d/workshops.png"),
@@ -48,6 +49,16 @@ const ICONS = {
 export type TileIconName = keyof typeof ICONS;
 
 /**
+ * Per-icon size multiplier — a few pieces of source artwork have more padding
+ * baked in than the rest, so at the same rendered size they read visually
+ * smaller. Nudging the render size compensates for that instead of touching
+ * the PNG. Keys omitted here render at scale 1.
+ */
+const ICON_SCALE: Partial<Record<TileIconName, number>> = {
+  timetable: 1.35,
+};
+
+/**
  * Renders one tile icon. `muted` is the plan-locked state — the art fades back
  * rather than being swapped for a grey glyph, so the tile keeps its shape and
  * the lock badge beside it stays the thing that reads as "locked".
@@ -61,10 +72,11 @@ export function TileIcon({
   size?: number;
   muted?: boolean;
 }) {
+  const rendered = Math.round(size * (ICON_SCALE[name] ?? 1));
   return (
     <Image
       source={ICONS[name]}
-      style={{ width: size, height: size, opacity: muted ? 0.35 : 1 }}
+      style={{ width: rendered, height: rendered, opacity: muted ? 0.35 : 1 }}
       contentFit="contain"
       // These ship in the bundle, so there is nothing to fetch and nothing to
       // fade in — a transition would just make every grid flicker on mount.

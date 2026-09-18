@@ -91,6 +91,7 @@ function RootNavigator() {
       <Stack.Screen name="insights" options={{ headerShown: false }} />
       <Stack.Screen name="article/[slug]" options={{ title: "Article" }} />
       <Stack.Screen name="reminders" options={{ title: "Reminders" }} />
+      <Stack.Screen name="future-saving-planner" options={{ title: "Future Saving Planner" }} />
       <Stack.Screen name="feedback" options={{ title: "Consultant feedback" }} />
       <Stack.Screen name="search" options={{ title: "Search" }} />
       <Stack.Screen name="account-security" options={{ title: "Account & Security" }} />

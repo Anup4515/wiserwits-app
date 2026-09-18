@@ -652,7 +652,7 @@ function ExploreTile({ item, onPress }: { item: ExploreItem; onPress: () => void
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] }]}>
       <TileIcon name={item.icon} size={34} />
-      <Text style={styles.tileLabel} numberOfLines={1}>{item.label}</Text>
+      <Text style={styles.tileLabel} numberOfLines={1}>{item.homeLabel ?? item.label}</Text>
     </Pressable>
   );
 }

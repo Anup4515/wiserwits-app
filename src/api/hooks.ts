@@ -47,6 +47,8 @@ import type {
   CourseListResponse,
   DashboardData,
   DietPlanRow,
+  EducationProjectionPage,
+  EducationProjectionRow,
   EnrollmentRow,
   ExamRow,
   FeedData,
@@ -476,6 +478,52 @@ export function useDeleteBmi() {
     method: "delete",
     path: (id) => `/api/student/bmi/${id}`,
     invalidate: [["health"], ["bmi-history"], ["dashboard"]],
+  });
+}
+
+/**
+ * Saved education-cost projections (Future Saving Planner). Cursor-paginated
+ * — see `/api/student/education-calculator`. Always-allowed; the endpoint is
+ * scoped to the caller's student_id server-side.
+ */
+export function useEducationProjections(): SourceInfiniteQueryResult<EducationProjectionPage> {
+  return useSourceInfiniteQuery<EducationProjectionPage>({
+    key: "education-projections",
+    cursorParam: "before",
+    build: () => ({ path: "/api/student/education-calculator" }),
+  });
+}
+
+export interface EducationProjectionInput {
+  child_current_age: number;
+  education_start_age: number;
+  annual_cost: number;
+  duration_years: number;
+  inflation_rate: number;
+  return_rate: number;
+}
+
+/** Save a projection. Server recomputes the outputs from inputs. */
+export function useSaveEducationProjection() {
+  return useApiMutation<
+    Pick<
+      EducationProjectionRow,
+      "id" | "total_future_cost" | "lump_sum_today" | "monthly_sip" | "cost_multiplier"
+    >,
+    EducationProjectionInput
+  >({
+    path: "/api/student/education-calculator",
+    body: (v) => v,
+    invalidate: [["education-projections"]],
+  });
+}
+
+/** Delete a saved projection (id → DELETE /education-calculator/[id]). */
+export function useDeleteEducationProjection() {
+  return useApiMutation<{ id: number }, number>({
+    method: "delete",
+    path: (id) => `/api/student/education-calculator/${id}`,
+    invalidate: [["education-projections"]],
   });
 }
 

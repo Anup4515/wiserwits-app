@@ -18,6 +18,12 @@ export interface ExploreItem {
   /** Key into the 3D tile artwork (see components/icons/tile-icon). */
   icon: TileIconName;
   label: string;
+  /**
+   * Short label shown on the Home grid (2 × 4 tiles are cramped). Falls back to
+   * `label` when omitted. The destination screen and Explore-all always use the
+   * full `label`.
+   */
+  homeLabel?: string;
   href: Href;
   group: ExploreGroup;
   subtitle: string;
@@ -40,6 +46,7 @@ export const EXPLORE: ExploreItem[] = [
   { icon: "timetable", label: "Timetable", href: "/(tabs)/academics/timetable", group: "Academics", subtitle: "Weekly class schedule" },
   { icon: "calendar", label: "Calendar", href: "/(tabs)/academics/calendar", group: "Academics", subtitle: "Working days, holidays & events" },
   { icon: "insights", label: "Insights", href: "/insights", group: "Academics", subtitle: "How things are going, at a glance" },
+  { icon: "future-saving-planner", label: "Future Saving Planner", homeLabel: "Future Plan", href: "/future-saving-planner", group: "Academics", subtitle: "Project education costs & SIP needed" },
   { icon: "plans", label: "Plans", href: "/subscription", group: "Account", subtitle: "View & change the plan" },
   { icon: "courses", label: "Courses", href: "/courses", group: "Learning", subtitle: "Browse, enrol & keep learning" },
   { icon: "live-classes", label: "Live classes", href: "/live-classes", group: "Learning", subtitle: "Upcoming & recorded sessions" },
@@ -80,7 +87,7 @@ export const HOME_EXPLORE_LABELS = [
   "Report",
   "Courses",
   "Live classes",
-  "Advice",
+  "Future Saving Planner",
 ] as const;
 
 export const HOME_EXPLORE: ExploreItem[] = HOME_EXPLORE_LABELS.map((label) => {

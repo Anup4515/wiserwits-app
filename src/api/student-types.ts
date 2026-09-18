@@ -411,6 +411,33 @@ export interface BmiHistoryPage {
   items: BmiHistoryRow[];
   nextCursor: string | null;
 }
+
+/**
+ * One saved education-cost projection as `/api/student/education-calculator`
+ * returns it. Server keeps DECIMALs precise, so numeric columns arrive as
+ * STRINGS — the screen coerces with `Number(...)` before formatting.
+ * `monthly_sip` is null when the child's current age equals the education
+ * start age (SIP not applicable — a lump-sum-today plan).
+ */
+export interface EducationProjectionRow {
+  id: number;
+  child_current_age: string | number;
+  education_start_age: string | number;
+  annual_cost: string | number;
+  duration_years: string | number;
+  inflation_rate: string | number;
+  return_rate: string | number;
+  total_future_cost: string | number;
+  lump_sum_today: string | number;
+  monthly_sip: string | number | null;
+  cost_multiplier: string | number;
+  created_at: string;
+}
+
+export interface EducationProjectionPage {
+  items: EducationProjectionRow[];
+  nextCursor: string | null;
+}
 export interface HealthData {
   bmi_records: BmiRecord[];
   consultations_count: number;
